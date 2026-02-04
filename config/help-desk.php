@@ -88,6 +88,11 @@ return [
                 'webhook_secret' => env('HELPDESK_RESEND_WEBHOOK_SECRET'),
             ],
 
+            'postmark' => [
+                'webhook_username' => env('HELPDESK_POSTMARK_WEBHOOK_USERNAME'),
+                'webhook_password' => env('HELPDESK_POSTMARK_WEBHOOK_PASSWORD'),
+            ],
+
             'store_raw_payload' => env('HELPDESK_STORE_RAW_PAYLOAD', false),
             'retention_days' => 30,
         ],

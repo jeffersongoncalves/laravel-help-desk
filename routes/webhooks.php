@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\MailgunWebhookController;
+use JeffersonGoncalves\HelpDesk\Http\Controllers\PostmarkWebhookController;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\ResendWebhookController;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\SendGridWebhookController;
 use JeffersonGoncalves\HelpDesk\Http\Middleware\VerifyMailgunSignature;
+use JeffersonGoncalves\HelpDesk\Http\Middleware\VerifyPostmarkSignature;
 use JeffersonGoncalves\HelpDesk\Http\Middleware\VerifyResendSignature;
 use JeffersonGoncalves\HelpDesk\Http\Middleware\VerifySendGridSignature;
 
@@ -22,4 +24,8 @@ Route::prefix(config('help-desk.webhooks.prefix', 'help-desk/webhooks'))
         Route::post('resend', ResendWebhookController::class)
             ->middleware(VerifyResendSignature::class)
             ->name('help-desk.webhooks.resend');
+
+        Route::post('postmark', PostmarkWebhookController::class)
+            ->middleware(VerifyPostmarkSignature::class)
+            ->name('help-desk.webhooks.postmark');
     });

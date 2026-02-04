@@ -321,7 +321,7 @@ Notifications are sent automatically when events occur (configurable via `notifi
 
 ### Inbound Email
 
-The package supports receiving emails via 4 drivers:
+The package supports receiving emails via 5 drivers:
 
 #### IMAP
 
@@ -386,6 +386,21 @@ POST https://your-app.com/help-desk/webhooks/resend
 ```
 
 Select the `email.received` event type in your Resend webhook configuration.
+
+#### Postmark
+
+```env
+HELPDESK_INBOUND_DRIVER=postmark
+HELPDESK_POSTMARK_WEBHOOK_USERNAME=your-username
+HELPDESK_POSTMARK_WEBHOOK_PASSWORD=your-password
+```
+
+In your Postmark server, go to the Inbound Message Stream settings and set the webhook URL to:
+```
+POST https://your-username:your-password@your-app.com/help-desk/webhooks/postmark
+```
+
+Postmark sends the full email content (body, headers, attachments) directly in the webhook payload. The package also uses Postmark's `StrippedTextReply` field for cleaner reply parsing.
 
 ### Email Channels
 
