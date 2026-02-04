@@ -95,6 +95,11 @@ return [
                 'webhook_password' => env('HELPDESK_SENDGRID_WEBHOOK_PASSWORD'),
             ],
 
+            'resend' => [
+                'api_key' => env('HELPDESK_RESEND_API_KEY', env('RESEND_API_KEY')),
+                'webhook_secret' => env('HELPDESK_RESEND_WEBHOOK_SECRET'),
+            ],
+
             'store_raw_payload' => env('HELPDESK_STORE_RAW_PAYLOAD', false),
             'retention_days' => 30,
         ],
