@@ -1,0 +1,216 @@
+<?php
+
+namespace JeffersonGoncalves\HelpDesk\Tests\Feature\Services;
+
+use Illuminate\Support\Facades\Event;
+use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
+use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
+use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
+use JeffersonGoncalves\HelpDesk\Events\TicketReopened;
+use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
+use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
+use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
+use JeffersonGoncalves\HelpDesk\Models\Department;
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Services\TicketService;
+use JeffersonGoncalves\HelpDesk\Tests\TestCase;
+use JeffersonGoncalves\HelpDesk\Tests\TestUser;
+
+class TicketServiceTest extends TestCase
+{
+    private TicketService $service;
+
+    private TestUser $user;
+
+    private Department $department;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(TicketService::class);
+
+        $this->user = TestUser::create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
+
+        $this->department = Department::create([
+            'name' => 'Support',
+            'slug' => 'support',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_create_ticket(): void
+    {
+        Event::fake();
+
+        $ticket = $this->service->create([
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+            'department_id' => $this->department->id,
+        ], $this->user);
+
+        $this->assertInstanceOf(Ticket::class, $ticket);
+        $this->assertEquals('Test Ticket', $ticket->title);
+        $this->assertEquals($this->user->id, $ticket->user_id);
+        $this->assertNotEmpty($ticket->uuid);
+        $this->assertNotEmpty($ticket->reference_number);
+
+        Event::assertDispatched(TicketCreated::class);
+    }
+
+    public function test_change_status(): void
+    {
+        Event::fake();
+
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $updated = $this->service->changeStatus($ticket, TicketStatus::InProgress);
+
+        $this->assertEquals(TicketStatus::InProgress, $updated->status);
+        Event::assertDispatched(TicketStatusChanged::class);
+    }
+
+    public function test_invalid_status_transition_throws_exception(): void
+    {
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+            'status' => TicketStatus::Closed,
+        ]);
+
+        $this->expectException(InvalidStatusTransitionException::class);
+
+        $this->service->changeStatus($ticket, TicketStatus::InProgress);
+    }
+
+    public function test_close_ticket(): void
+    {
+        Event::fake();
+
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $closed = $this->service->close($ticket);
+
+        $this->assertEquals(TicketStatus::Closed, $closed->status);
+        Event::assertDispatched(TicketClosed::class);
+    }
+
+    public function test_reopen_ticket(): void
+    {
+        Event::fake();
+
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+            'status' => TicketStatus::Closed,
+        ]);
+
+        $reopened = $this->service->reopen($ticket);
+
+        $this->assertEquals(TicketStatus::Open, $reopened->status);
+        Event::assertDispatched(TicketReopened::class);
+    }
+
+    public function test_assign_ticket(): void
+    {
+        Event::fake();
+
+        $operator = TestUser::create([
+            'name' => 'Operator',
+            'email' => 'operator@example.com',
+        ]);
+
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $assigned = $this->service->assign($ticket, $operator);
+
+        $this->assertEquals($operator->id, $assigned->assigned_to_id);
+    }
+
+    public function test_find_by_uuid(): void
+    {
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $found = $this->service->findByUuid($ticket->uuid);
+
+        $this->assertEquals($ticket->id, $found->id);
+    }
+
+    public function test_find_by_uuid_throws_when_not_found(): void
+    {
+        $this->expectException(TicketNotFoundException::class);
+
+        $this->service->findByUuid('nonexistent-uuid');
+    }
+
+    public function test_find_by_reference(): void
+    {
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $found = $this->service->findByReference($ticket->reference_number);
+
+        $this->assertEquals($ticket->id, $found->id);
+    }
+
+    public function test_add_and_remove_watcher(): void
+    {
+        $ticket = Ticket::create([
+            'department_id' => $this->department->id,
+            'user_type' => $this->user->getMorphClass(),
+            'user_id' => $this->user->id,
+            'title' => 'Test Ticket',
+            'description' => 'Test description',
+        ]);
+
+        $watcher = TestUser::create([
+            'name' => 'Watcher',
+            'email' => 'watcher@example.com',
+        ]);
+
+        $this->service->addWatcher($ticket, $watcher);
+        $this->assertCount(1, $ticket->fresh()->watchers);
+
+        $this->service->removeWatcher($ticket, $watcher);
+        $this->assertCount(0, $ticket->fresh()->watchers);
+    }
+}
