@@ -3,7 +3,6 @@
 namespace JeffersonGoncalves\HelpDesk;
 
 use Illuminate\Database\Eloquent\Model;
-use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;

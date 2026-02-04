@@ -28,7 +28,7 @@ class TicketStatusChangedNotification extends Notification implements ShouldQueu
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage())
+        $message = (new MailMessage)
             ->subject(__('help-desk::notifications.ticket_status_changed.subject', [
                 'reference' => $this->ticket->reference_number,
             ]))

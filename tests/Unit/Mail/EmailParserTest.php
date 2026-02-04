@@ -12,7 +12,7 @@ class EmailParserTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->parser = new EmailParser();
+        $this->parser = new EmailParser;
     }
 
     public function test_parse_extracts_basic_fields(): void

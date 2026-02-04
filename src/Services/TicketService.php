@@ -4,7 +4,6 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
@@ -23,7 +22,7 @@ class TicketService
     public function create(array $data, Model $user): Ticket
     {
         return DB::transaction(function () use ($data, $user) {
-            $ticket = new Ticket();
+            $ticket = new Ticket;
             $ticket->fill($data);
             $ticket->user_type = $user->getMorphClass();
             $ticket->user_id = $user->getKey();

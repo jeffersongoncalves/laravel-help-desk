@@ -25,7 +25,7 @@ class TicketClosedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage())
+        $message = (new MailMessage)
             ->subject(__('help-desk::notifications.ticket_closed.subject', [
                 'reference' => $this->ticket->reference_number,
             ]))

@@ -3,15 +3,12 @@
 namespace JeffersonGoncalves\HelpDesk;
 
 use Illuminate\Support\Facades\Event;
-use Spatie\LaravelPackageTools\Package;
-use Spatie\LaravelPackageTools\PackageServiceProvider;
 use JeffersonGoncalves\HelpDesk\Commands\CleanInboundEmailsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CloseStaleTicketsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\PollImapMailboxCommand;
 use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
-use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
@@ -25,6 +22,8 @@ use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
 use JeffersonGoncalves\HelpDesk\Services\InboundEmailService;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class HelpDeskServiceProvider extends PackageServiceProvider
 {

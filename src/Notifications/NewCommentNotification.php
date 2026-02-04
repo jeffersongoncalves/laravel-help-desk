@@ -30,7 +30,7 @@ class NewCommentNotification extends Notification implements ShouldQueue
         $author = $this->comment->author;
         $authorName = method_exists($author, 'getName') ? $author->getName() : ($author->name ?? 'System');
 
-        $message = (new MailMessage())
+        $message = (new MailMessage)
             ->subject(__('help-desk::notifications.comment_added.subject', [
                 'reference' => $this->ticket->reference_number,
             ]))

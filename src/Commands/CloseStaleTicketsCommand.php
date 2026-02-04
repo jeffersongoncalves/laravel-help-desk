@@ -3,7 +3,6 @@
 namespace JeffersonGoncalves\HelpDesk\Commands;
 
 use Illuminate\Console\Command;
-use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
 

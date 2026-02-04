@@ -30,7 +30,7 @@ class PollImapMailboxCommand extends Command
             return self::SUCCESS;
         }
 
-        $driver = new ImapDriver();
+        $driver = new ImapDriver;
 
         $query = EmailChannel::active()->byDriver('imap');
 
@@ -77,7 +77,7 @@ class PollImapMailboxCommand extends Command
                     ]);
                 }
 
-                $this->info("Processed ".count($emails)." email(s) from {$channel->name}.");
+                $this->info('Processed '.count($emails)." email(s) from {$channel->name}.");
             } catch (\Throwable $e) {
                 $this->error("Error polling {$channel->name}: {$e->getMessage()}");
                 $channel->markError($e->getMessage());

@@ -16,7 +16,7 @@ class ImapDriver implements EmailDriver
         $emails = [];
 
         try {
-            $client = new \Webklex\PHPIMAP\ClientManager();
+            $client = new \Webklex\PHPIMAP\ClientManager;
             $connection = $client->make([
                 'host' => $settings['host'],
                 'port' => $settings['port'] ?? 993,

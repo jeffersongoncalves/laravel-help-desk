@@ -25,7 +25,7 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage())
+        $message = (new MailMessage)
             ->subject(__('help-desk::notifications.ticket_created.subject', [
                 'title' => $this->ticket->title,
             ]))

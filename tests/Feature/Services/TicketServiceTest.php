@@ -7,7 +7,6 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
-use JeffersonGoncalves\HelpDesk\Events\TicketPriorityChanged;
 use JeffersonGoncalves\HelpDesk\Events\TicketReopened;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
 use JeffersonGoncalves\HelpDesk\Events\TicketUpdated;

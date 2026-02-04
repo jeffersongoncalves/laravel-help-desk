@@ -149,7 +149,7 @@ class TicketTest extends TestCase
 
     public function test_route_key_name_is_uuid(): void
     {
-        $ticket = new Ticket();
+        $ticket = new Ticket;
         $this->assertEquals('uuid', $ticket->getRouteKeyName());
     }
 }
