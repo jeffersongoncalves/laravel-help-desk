@@ -44,6 +44,28 @@ abstract class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+        $migrationPath = __DIR__.'/../database/migrations';
+        $files = glob($migrationPath.'/*.php.stub');
+
+        foreach ($files as $file) {
+            $migrationFile = $migrationPath.'/'.basename($file, '.stub');
+
+            if (! file_exists($migrationFile)) {
+                copy($file, $migrationFile);
+            }
+        }
+
+        $this->loadMigrationsFrom($migrationPath);
+
+        $this->beforeApplicationDestroyed(function () use ($migrationPath, $files) {
+            foreach ($files as $file) {
+                $migrationFile = $migrationPath.'/'.basename($file, '.stub');
+
+                if (file_exists($migrationFile)) {
+                    unlink($migrationFile);
+                }
+            }
+        });
     }
 }
