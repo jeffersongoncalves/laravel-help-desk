@@ -52,7 +52,8 @@ class PollImapMailboxCommand extends Command
             try {
                 $emails = $driver->poll($channel);
 
-                $this->info("Found {$count} new email(s).", ['count' => count($emails)]);
+                $count = count($emails);
+                $this->info("Found {$count} new email(s).");
 
                 foreach ($emails as $emailData) {
                     $parsed = $this->emailParser->parse($emailData);
