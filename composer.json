@@ -1,0 +1,69 @@
+{
+    "name": "jeffersongoncalves/laravel-help-desk",
+    "description": "A comprehensive help desk and ticket management system for Laravel applications with email integration.",
+    "keywords": [
+        "laravel",
+        "help-desk",
+        "ticket",
+        "support",
+        "customer-support",
+        "email-integration"
+    ],
+    "homepage": "https://github.com/jeffersongoncalves/laravel-help-desk",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Jefferson Goncalves",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/contracts": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0",
+        "illuminate/events": "^10.0|^11.0|^12.0",
+        "illuminate/notifications": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.0",
+        "nunomaduro/larastan": "^2.0",
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0"
+    },
+    "suggest": {
+        "webklex/php-imap": "Required for IMAP inbound email polling (^5.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "JeffersonGoncalves\\HelpDesk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JeffersonGoncalves\\HelpDesk\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "analyse": "vendor/bin/phpstan analyse",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "JeffersonGoncalves\\HelpDesk\\HelpDeskServiceProvider"
+            ],
+            "aliases": {
+                "HelpDesk": "JeffersonGoncalves\\HelpDesk\\Facades\\HelpDesk"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
