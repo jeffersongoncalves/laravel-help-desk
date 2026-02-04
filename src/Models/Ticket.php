@@ -12,6 +12,30 @@ use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property string $reference_number
+ * @property int $department_id
+ * @property int|null $category_id
+ * @property string $user_type
+ * @property int $user_id
+ * @property string|null $assigned_to_type
+ * @property int|null $assigned_to_id
+ * @property string $title
+ * @property string $description
+ * @property TicketStatus $status
+ * @property TicketPriority $priority
+ * @property string $source
+ * @property string|null $email_message_id
+ * @property \Illuminate\Support\Carbon|null $closed_at
+ * @property \Illuminate\Support\Carbon|null $due_at
+ * @property \Illuminate\Support\Carbon|null $last_replied_at
+ * @property array|null $metadata
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ */
 class Ticket extends Model
 {
     use HasFactory, SoftDeletes;

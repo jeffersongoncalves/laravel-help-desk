@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+/**
+ * @property int $id
+ * @property int $ticket_id
+ * @property string $watcher_type
+ * @property int $watcher_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ */
 class TicketWatcher extends Model
 {
     public $timestamps = false;

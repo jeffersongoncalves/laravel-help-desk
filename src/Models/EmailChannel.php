@@ -7,6 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int|null $department_id
+ * @property string $name
+ * @property string $driver
+ * @property string $email_address
+ * @property array $settings
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $last_polled_at
+ * @property string|null $last_error
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class EmailChannel extends Model
 {
     use HasFactory;

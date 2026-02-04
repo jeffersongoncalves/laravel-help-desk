@@ -8,5 +8,6 @@ parameters:
     level: 5
 
     ignoreErrors:
-
-    checkMissingIterableValueType: false
+        -
+            identifier: class.notFound
+            path: src/Mail/Drivers/ImapDriver.php

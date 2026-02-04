@@ -7,6 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
 
+/**
+ * @property int $id
+ * @property int $ticket_id
+ * @property string|null $performer_type
+ * @property int|null $performer_id
+ * @property HistoryAction $action
+ * @property string|null $field
+ * @property string|null $old_value
+ * @property string|null $new_value
+ * @property string|null $description
+ * @property array|null $metadata
+ * @property \Illuminate\Support\Carbon|null $created_at
+ */
 class TicketHistory extends Model
 {
     public $timestamps = false;
