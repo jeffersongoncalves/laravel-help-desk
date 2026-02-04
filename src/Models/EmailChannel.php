@@ -1,0 +1,67 @@
+<?php
+
+namespace JeffersonGoncalves\HelpDesk\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class EmailChannel extends Model
+{
+    use HasFactory;
+
+    protected $table = 'help_desk_email_channels';
+
+    protected $fillable = [
+        'department_id',
+        'name',
+        'driver',
+        'email_address',
+        'settings',
+        'is_active',
+        'last_polled_at',
+        'last_error',
+    ];
+
+    protected $casts = [
+        'settings' => 'encrypted:array',
+        'is_active' => 'boolean',
+        'last_polled_at' => 'datetime',
+    ];
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function inboundEmails(): HasMany
+    {
+        return $this->hasMany(InboundEmail::class, 'email_channel_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeByDriver($query, string $driver)
+    {
+        return $query->where('driver', $driver);
+    }
+
+    public function markPolled(): void
+    {
+        $this->update([
+            'last_polled_at' => now(),
+            'last_error' => null,
+        ]);
+    }
+
+    public function markError(string $error): void
+    {
+        $this->update([
+            'last_error' => $error,
+        ]);
+    }
+}
