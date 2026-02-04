@@ -3,7 +3,7 @@
 namespace JeffersonGoncalves\HelpDesk\Tests\Unit\Enums;
 
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
-use PHPUnit\Framework\TestCase;
+use JeffersonGoncalves\HelpDesk\Tests\TestCase;
 
 class TicketStatusTest extends TestCase
 {
