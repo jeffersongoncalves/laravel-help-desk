@@ -76,7 +76,7 @@ class TicketAttachment extends Model
 
     public function uploadedBy(): MorphTo
     {
-        return $this->morphTo('uploadedBy');
+        return $this->morphTo('uploaded_by');
     }
 
     public function getUrl(): ?string
