@@ -18,4 +18,9 @@ enum HistoryAction: string
     case Reopened = 'reopened';
     case TitleChanged = 'title_changed';
     case Merged = 'merged';
+
+    public function label(): string
+    {
+        return __('help-desk::history_actions.'.$this->value);
+    }
 }
