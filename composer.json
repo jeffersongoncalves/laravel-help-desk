@@ -31,9 +31,8 @@
         "larastan/larastan": "^2.0 || ^3.0",
         "laravel/pint": "^1.0",
         "orchestra/testbench": "^8.0|^9.0|^10.0",
-        "pestphp/pest": "*",
-        "pestphp/pest-plugin-laravel": "*",
-        "phpunit/phpunit": "^10.0|^11.0"
+        "pestphp/pest": "^2.0|^3.0",
+        "pestphp/pest-plugin-laravel": "^2.0|^3.0"
     },
     "suggest": {
         "webklex/php-imap": "Required for IMAP inbound email polling (^5.0)"
@@ -49,7 +48,7 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit",
+        "test": "vendor/bin/pest",
         "analyse": "vendor/bin/phpstan analyse",
         "format": "vendor/bin/pint"
     },
