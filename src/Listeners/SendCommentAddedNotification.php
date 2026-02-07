@@ -31,6 +31,7 @@ class SendCommentAddedNotification implements ShouldQueue
 
         // Notify watchers
         foreach ($ticket->watchers as $watcherPivot) {
+            /** @var \Illuminate\Database\Eloquent\Model|null $watcher */
             $watcher = $watcherPivot->watcher;
             if ($watcher && method_exists($watcher, 'notify')) {
                 if ($comment->author_type !== $watcher->getMorphClass() || $comment->author_id !== $watcher->getKey()) {

@@ -47,6 +47,7 @@ class TicketComment extends Model
         'metadata' => 'array',
     ];
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');

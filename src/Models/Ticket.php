@@ -112,6 +112,7 @@ class Ticket extends Model
         return $this->morphTo('assigned_to');
     }
 
+    /** @return BelongsTo<Department, $this> */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id');
@@ -122,6 +123,7 @@ class Ticket extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
+    /** @return HasMany<TicketComment, $this> */
     public function comments(): HasMany
     {
         return $this->hasMany(TicketComment::class, 'ticket_id');
@@ -137,6 +139,7 @@ class Ticket extends Model
         return $this->hasMany(TicketHistory::class, 'ticket_id');
     }
 
+    /** @return HasMany<TicketWatcher, $this> */
     public function watchers(): HasMany
     {
         return $this->hasMany(TicketWatcher::class, 'ticket_id');

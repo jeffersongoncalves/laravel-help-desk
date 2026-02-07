@@ -60,6 +60,7 @@ class InboundEmail extends Model
         'processed_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<EmailChannel, $this> */
     public function emailChannel(): BelongsTo
     {
         return $this->belongsTo(EmailChannel::class, 'email_channel_id');

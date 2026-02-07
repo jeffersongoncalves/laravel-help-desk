@@ -130,11 +130,9 @@ class ResendDriver implements EmailDriver
 
     protected function extractHeader(array $headers, string $name): ?string
     {
-        if (is_array($headers)) {
-            foreach ($headers as $header) {
-                if (is_array($header) && isset($header['name']) && strcasecmp($header['name'], $name) === 0) {
-                    return $header['value'] ?? null;
-                }
+        foreach ($headers as $header) {
+            if (is_array($header) && isset($header['name']) && strcasecmp($header['name'], $name) === 0) {
+                return $header['value'] ?? null;
             }
         }
 

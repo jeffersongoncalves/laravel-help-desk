@@ -69,6 +69,7 @@ class AttachmentService
     {
         Storage::disk($attachment->disk)->delete($attachment->file_path);
 
+        /** @var Ticket $ticket */
         $ticket = $attachment->ticket;
 
         event(new AttachmentRemoved($ticket, $attachment, $removedBy));

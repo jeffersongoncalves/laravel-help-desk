@@ -1,5 +1,5 @@
 includes:
-    - vendor/nunomaduro/larastan/extension.neon
+    - vendor/larastan/larastan/extension.neon
 
 parameters:
     paths:
@@ -11,3 +11,5 @@ parameters:
         -
             identifier: class.notFound
             path: src/Mail/Drivers/ImapDriver.php
+        -
+            identifier: trait.unused
