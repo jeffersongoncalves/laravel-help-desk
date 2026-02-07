@@ -1,58 +1,52 @@
 <?php
 
-namespace JeffersonGoncalves\HelpDesk\Tests\Unit\Enums;
-
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Tests\TestCase;
 
-class TicketStatusTest extends TestCase
-{
-    public function test_all_statuses_exist(): void
-    {
-        $this->assertCount(6, TicketStatus::cases());
-    }
+uses(TestCase::class);
 
-    public function test_status_values(): void
-    {
-        $this->assertEquals('open', TicketStatus::Open->value);
-        $this->assertEquals('pending', TicketStatus::Pending->value);
-        $this->assertEquals('in_progress', TicketStatus::InProgress->value);
-        $this->assertEquals('on_hold', TicketStatus::OnHold->value);
-        $this->assertEquals('resolved', TicketStatus::Resolved->value);
-        $this->assertEquals('closed', TicketStatus::Closed->value);
-    }
+it('has all statuses', function () {
+    expect(TicketStatus::cases())->toHaveCount(6);
+});
 
-    public function test_open_can_transition_to_most_statuses(): void
-    {
-        $allowed = TicketStatus::Open->allowedTransitions();
+it('has correct values', function () {
+    expect(TicketStatus::Open->value)->toBe('open')
+        ->and(TicketStatus::Pending->value)->toBe('pending')
+        ->and(TicketStatus::InProgress->value)->toBe('in_progress')
+        ->and(TicketStatus::OnHold->value)->toBe('on_hold')
+        ->and(TicketStatus::Resolved->value)->toBe('resolved')
+        ->and(TicketStatus::Closed->value)->toBe('closed');
+});
 
-        $this->assertContains(TicketStatus::Pending, $allowed);
-        $this->assertContains(TicketStatus::InProgress, $allowed);
-        $this->assertContains(TicketStatus::OnHold, $allowed);
-        $this->assertContains(TicketStatus::Resolved, $allowed);
-        $this->assertContains(TicketStatus::Closed, $allowed);
-    }
+it('allows open to transition to most statuses', function () {
+    $allowed = TicketStatus::Open->allowedTransitions();
 
-    public function test_closed_can_only_transition_to_open(): void
-    {
-        $allowed = TicketStatus::Closed->allowedTransitions();
+    expect($allowed)
+        ->toContain(TicketStatus::Pending)
+        ->toContain(TicketStatus::InProgress)
+        ->toContain(TicketStatus::OnHold)
+        ->toContain(TicketStatus::Resolved)
+        ->toContain(TicketStatus::Closed);
+});
 
-        $this->assertContains(TicketStatus::Open, $allowed);
-        $this->assertCount(1, $allowed);
-    }
+it('allows closed to only transition to open', function () {
+    $allowed = TicketStatus::Closed->allowedTransitions();
 
-    public function test_can_transition_to_returns_correct_boolean(): void
-    {
-        $this->assertTrue(TicketStatus::Open->canTransitionTo(TicketStatus::Closed));
-        $this->assertFalse(TicketStatus::Closed->canTransitionTo(TicketStatus::Pending));
-    }
+    expect($allowed)
+        ->toHaveCount(1)
+        ->toContain(TicketStatus::Open);
+});
 
-    public function test_resolved_has_limited_transitions(): void
-    {
-        $allowed = TicketStatus::Resolved->allowedTransitions();
+it('returns correct boolean for canTransitionTo', function () {
+    expect(TicketStatus::Open->canTransitionTo(TicketStatus::Closed))->toBeTrue()
+        ->and(TicketStatus::Closed->canTransitionTo(TicketStatus::Pending))->toBeFalse();
+});
 
-        $this->assertContains(TicketStatus::Open, $allowed);
-        $this->assertContains(TicketStatus::Closed, $allowed);
-        $this->assertCount(2, $allowed);
-    }
-}
+it('has limited transitions for resolved status', function () {
+    $allowed = TicketStatus::Resolved->allowedTransitions();
+
+    expect($allowed)
+        ->toHaveCount(2)
+        ->toContain(TicketStatus::Open)
+        ->toContain(TicketStatus::Closed);
+});

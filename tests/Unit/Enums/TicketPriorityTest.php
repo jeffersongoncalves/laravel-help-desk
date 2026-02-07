@@ -1,30 +1,21 @@
 <?php
 
-namespace JeffersonGoncalves\HelpDesk\Tests\Unit\Enums;
-
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
-use PHPUnit\Framework\TestCase;
 
-class TicketPriorityTest extends TestCase
-{
-    public function test_all_priorities_exist(): void
-    {
-        $this->assertCount(4, TicketPriority::cases());
-    }
+it('has all priorities', function () {
+    expect(TicketPriority::cases())->toHaveCount(4);
+});
 
-    public function test_priority_values(): void
-    {
-        $this->assertEquals('low', TicketPriority::Low->value);
-        $this->assertEquals('medium', TicketPriority::Medium->value);
-        $this->assertEquals('high', TicketPriority::High->value);
-        $this->assertEquals('urgent', TicketPriority::Urgent->value);
-    }
+it('has correct values', function () {
+    expect(TicketPriority::Low->value)->toBe('low')
+        ->and(TicketPriority::Medium->value)->toBe('medium')
+        ->and(TicketPriority::High->value)->toBe('high')
+        ->and(TicketPriority::Urgent->value)->toBe('urgent');
+});
 
-    public function test_numeric_values_are_ascending(): void
-    {
-        $this->assertEquals(1, TicketPriority::Low->numericValue());
-        $this->assertEquals(2, TicketPriority::Medium->numericValue());
-        $this->assertEquals(3, TicketPriority::High->numericValue());
-        $this->assertEquals(4, TicketPriority::Urgent->numericValue());
-    }
-}
+it('has ascending numeric values', function () {
+    expect(TicketPriority::Low->numericValue())->toBe(1)
+        ->and(TicketPriority::Medium->numericValue())->toBe(2)
+        ->and(TicketPriority::High->numericValue())->toBe(3)
+        ->and(TicketPriority::Urgent->numericValue())->toBe(4);
+});

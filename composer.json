@@ -31,6 +31,8 @@
         "larastan/larastan": "^2.0 || ^3.0",
         "laravel/pint": "^1.0",
         "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "pestphp/pest": "*",
+        "pestphp/pest-plugin-laravel": "*",
         "phpunit/phpunit": "^10.0|^11.0"
     },
     "suggest": {
@@ -52,7 +54,10 @@
         "format": "vendor/bin/pint"
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     },
     "extra": {
         "laravel": {
