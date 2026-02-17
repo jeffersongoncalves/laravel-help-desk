@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $processed_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ *
+ * @property-read EmailChannel|null $emailChannel
+ * @property-read Ticket|null $ticket
+ * @property-read TicketComment|null $comment
  */
 class InboundEmail extends Model
 {
@@ -66,27 +71,32 @@ class InboundEmail extends Model
         return $this->belongsTo(EmailChannel::class, 'email_channel_id');
     }
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');
     }
 
+    /** @return BelongsTo<TicketComment, $this> */
     public function comment(): BelongsTo
     {
         return $this->belongsTo(TicketComment::class, 'comment_id');
     }
 
-    public function scopePending($query)
+    /** @param Builder<static> $query */
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
     }
 
-    public function scopeProcessed($query)
+    /** @param Builder<static> $query */
+    public function scopeProcessed(Builder $query): Builder
     {
         return $query->where('status', 'processed');
     }
 
-    public function scopeFailed($query)
+    /** @param Builder<static> $query */
+    public function scopeFailed(Builder $query): Builder
     {
         return $query->where('status', 'failed');
     }

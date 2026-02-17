@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,15 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @property-read \Illuminate\Database\Eloquent\Model|null $user
+ * @property-read \Illuminate\Database\Eloquent\Model|null $assignedTo
+ * @property-read Department $department
+ * @property-read Category|null $category
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketComment> $comments
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketAttachment> $attachments
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketHistory> $history
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketWatcher> $watchers
  */
 class Ticket extends Model
 {
@@ -118,6 +128,7 @@ class Ticket extends Model
         return $this->belongsTo(Department::class, 'department_id');
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
@@ -129,11 +140,13 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class, 'ticket_id');
     }
 
+    /** @return HasMany<TicketAttachment, $this> */
     public function attachments(): HasMany
     {
         return $this->hasMany(TicketAttachment::class, 'ticket_id');
     }
 
+    /** @return HasMany<TicketHistory, $this> */
     public function history(): HasMany
     {
         return $this->hasMany(TicketHistory::class, 'ticket_id');
@@ -145,17 +158,20 @@ class Ticket extends Model
         return $this->hasMany(TicketWatcher::class, 'ticket_id');
     }
 
-    public function scopeByStatus($query, TicketStatus $status)
+    /** @param Builder<static> $query */
+    public function scopeByStatus(Builder $query, TicketStatus $status): Builder
     {
         return $query->where('status', $status);
     }
 
-    public function scopeByPriority($query, TicketPriority $priority)
+    /** @param Builder<static> $query */
+    public function scopeByPriority(Builder $query, TicketPriority $priority): Builder
     {
         return $query->where('priority', $priority);
     }
 
-    public function scopeOpen($query)
+    /** @param Builder<static> $query */
+    public function scopeOpen(Builder $query): Builder
     {
         return $query->whereNotIn('status', [
             TicketStatus::Closed->value,
@@ -163,7 +179,8 @@ class Ticket extends Model
         ]);
     }
 
-    public function scopeClosed($query)
+    /** @param Builder<static> $query */
+    public function scopeClosed(Builder $query): Builder
     {
         return $query->whereIn('status', [
             TicketStatus::Closed->value,
@@ -171,7 +188,8 @@ class Ticket extends Model
         ]);
     }
 
-    public function scopeOverdue($query)
+    /** @param Builder<static> $query */
+    public function scopeOverdue(Builder $query): Builder
     {
         return $query->whereNotNull('due_at')
             ->where('due_at', '<', now())
@@ -181,7 +199,8 @@ class Ticket extends Model
             ]);
     }
 
-    public function scopeUnassigned($query)
+    /** @param Builder<static> $query */
+    public function scopeUnassigned(Builder $query): Builder
     {
         return $query->whereNull('assigned_to_id');
     }

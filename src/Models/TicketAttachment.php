@@ -24,6 +24,10 @@ use Illuminate\Support\Str;
  * @property array|null $metadata
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ *
+ * @property-read Ticket $ticket
+ * @property-read TicketComment|null $comment
+ * @property-read \Illuminate\Database\Eloquent\Model|null $uploadedBy
  */
 class TicketAttachment extends Model
 {
@@ -69,6 +73,7 @@ class TicketAttachment extends Model
         return $this->belongsTo(Ticket::class, 'ticket_id');
     }
 
+    /** @return BelongsTo<TicketComment, $this> */
     public function comment(): BelongsTo
     {
         return $this->belongsTo(TicketComment::class, 'comment_id');

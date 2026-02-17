@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $watcher_type
  * @property int $watcher_id
  * @property \Illuminate\Support\Carbon|null $created_at
+ *
+ * @property-read Ticket $ticket
+ * @property-read \Illuminate\Database\Eloquent\Model|null $watcher
  */
 class TicketWatcher extends Model
 {
@@ -39,6 +42,7 @@ class TicketWatcher extends Model
         });
     }
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');

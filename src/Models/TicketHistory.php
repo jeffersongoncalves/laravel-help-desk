@@ -19,6 +19,9 @@ use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
  * @property string|null $description
  * @property array|null $metadata
  * @property \Illuminate\Support\Carbon|null $created_at
+ *
+ * @property-read Ticket $ticket
+ * @property-read \Illuminate\Database\Eloquent\Model|null $performer
  */
 class TicketHistory extends Model
 {
@@ -54,6 +57,7 @@ class TicketHistory extends Model
         });
     }
 
+    /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class, 'ticket_id');

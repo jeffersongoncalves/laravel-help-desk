@@ -8,15 +8,22 @@ use JeffersonGoncalves\HelpDesk\Models\Department;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketHistory;
 
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Ticket> $helpDeskAssignedTickets
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Department> $helpDeskDepartments
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketHistory> $helpDeskHistory
+ */
 trait IsOperator
 {
     use HasTickets;
 
+    /** @return MorphMany<Ticket, $this> */
     public function helpDeskAssignedTickets(): MorphMany
     {
         return $this->morphMany(Ticket::class, 'assigned_to');
     }
 
+    /** @return MorphToMany<Department, $this> */
     public function helpDeskDepartments(): MorphToMany
     {
         return $this->morphToMany(
@@ -28,6 +35,7 @@ trait IsOperator
         )->withPivot('role')->withTimestamps();
     }
 
+    /** @return MorphMany<TicketHistory, $this> */
     public function helpDeskHistory(): MorphMany
     {
         return $this->morphMany(TicketHistory::class, 'performer');
