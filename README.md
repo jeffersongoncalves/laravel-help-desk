@@ -1,3 +1,9 @@
+<div class="filament-hidden">
+
+![Laravel Help Desk](https://raw.githubusercontent.com/jeffersongoncalves/laravel-help-desk/master/art/jeffersongoncalves-laravel-help-desk.png)
+
+</div>
+
 # Laravel Help Desk
 
 A comprehensive help desk and ticket management system for Laravel applications with email integration.
