@@ -17,6 +17,54 @@ it('can create a department', function () {
     ]);
 });
 
+it('auto generates slug from name when slug is omitted', function () {
+    $department = Department::create([
+        'name' => 'Comercial',
+        'email' => 'comercial@email.com',
+        'description' => 'Departamento Comercial',
+        'is_active' => true,
+    ]);
+
+    expect($department->slug)->toBe('comercial');
+
+    $this->assertDatabaseHas('help_desk_departments', [
+        'name' => 'Comercial',
+        'slug' => 'comercial',
+    ]);
+});
+
+it('appends a suffix when the generated slug collides', function () {
+    Department::create(['name' => 'Comercial', 'is_active' => true]);
+    $second = Department::create(['name' => 'Comercial!', 'is_active' => true]);
+
+    expect($second->slug)->toBe('comercial-2');
+});
+
+it('keeps an explicitly provided slug', function () {
+    $department = Department::create([
+        'name' => 'Comercial',
+        'slug' => 'custom-slug',
+        'is_active' => true,
+    ]);
+
+    expect($department->slug)->toBe('custom-slug');
+});
+
+it('auto generates category slug from name when slug is omitted', function () {
+    $department = Department::create([
+        'name' => 'Support',
+        'is_active' => true,
+    ]);
+
+    $category = Category::create([
+        'department_id' => $department->id,
+        'name' => 'Billing Issues',
+        'is_active' => true,
+    ]);
+
+    expect($category->slug)->toBe('billing-issues');
+});
+
 it('has categories', function () {
     $department = Department::create([
         'name' => 'Support',
