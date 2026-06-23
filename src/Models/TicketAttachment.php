@@ -6,8 +6,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Database\Factories\TicketAttachmentFactory;
 
 /**
  * @property int $id
@@ -22,12 +24,11 @@ use Illuminate\Support\Str;
  * @property string $mime_type
  * @property int $file_size
  * @property array|null $metadata
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- *
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  * @property-read Ticket $ticket
  * @property-read TicketComment|null $comment
- * @property-read \Illuminate\Database\Eloquent\Model|null $uploadedBy
+ * @property-read Model|null $uploadedBy
  */
 class TicketAttachment extends Model
 {
@@ -53,6 +54,11 @@ class TicketAttachment extends Model
         'file_size' => 'integer',
         'metadata' => 'array',
     ];
+
+    protected static function newFactory(): TicketAttachmentFactory
+    {
+        return TicketAttachmentFactory::new();
+    }
 
     protected static function booted(): void
     {

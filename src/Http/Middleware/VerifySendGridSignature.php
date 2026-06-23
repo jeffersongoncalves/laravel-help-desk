@@ -4,6 +4,7 @@ namespace JeffersonGoncalves\HelpDesk\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifySendGridSignature
@@ -14,7 +15,9 @@ class VerifySendGridSignature
         $password = config('help-desk.email.inbound.sendgrid.webhook_password');
 
         if (empty($username) || empty($password)) {
-            return $next($request);
+            Log::warning('Help Desk: SendGrid webhook credentials are not configured. Rejecting request (fail closed). Set HELPDESK_SENDGRID_WEBHOOK_USERNAME and HELPDESK_SENDGRID_WEBHOOK_PASSWORD to enable the webhook.');
+
+            abort(403, __('help-desk::emails.errors.invalid_signature'));
         }
 
         $authHeader = $request->header('Authorization');

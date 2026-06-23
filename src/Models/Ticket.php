@@ -3,13 +3,16 @@
 namespace JeffersonGoncalves\HelpDesk\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Database\Factories\TicketFactory;
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 
@@ -29,22 +32,21 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property TicketPriority $priority
  * @property string $source
  * @property string|null $email_message_id
- * @property \Illuminate\Support\Carbon|null $closed_at
- * @property \Illuminate\Support\Carbon|null $due_at
- * @property \Illuminate\Support\Carbon|null $last_replied_at
+ * @property Carbon|null $closed_at
+ * @property Carbon|null $due_at
+ * @property Carbon|null $last_replied_at
  * @property array|null $metadata
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @property-read \Illuminate\Database\Eloquent\Model|null $user
- * @property-read \Illuminate\Database\Eloquent\Model|null $assignedTo
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ * @property-read Model|null $user
+ * @property-read Model|null $assignedTo
  * @property-read Department $department
  * @property-read Category|null $category
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketComment> $comments
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketAttachment> $attachments
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketHistory> $history
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketWatcher> $watchers
+ * @property-read Collection<int, TicketComment> $comments
+ * @property-read Collection<int, TicketAttachment> $attachments
+ * @property-read Collection<int, TicketHistory> $history
+ * @property-read Collection<int, TicketWatcher> $watchers
  */
 class Ticket extends Model
 {
@@ -82,15 +84,16 @@ class Ticket extends Model
         'last_replied_at' => 'datetime',
     ];
 
+    protected static function newFactory(): TicketFactory
+    {
+        return TicketFactory::new();
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Ticket $ticket) {
             if (empty($ticket->uuid)) {
                 $ticket->uuid = (string) Str::uuid();
-            }
-
-            if (empty($ticket->reference_number)) {
-                $ticket->reference_number = static::generateReferenceNumber();
             }
 
             if (empty($ticket->status)) {
@@ -100,16 +103,29 @@ class Ticket extends Model
             if (empty($ticket->priority)) {
                 $ticket->priority = config('help-desk.ticket.default_priority', 'medium');
             }
+
+            if (empty($ticket->reference_number)) {
+                // Temporary unique placeholder. The definitive reference number
+                // is derived from the auto-incremented primary key in the
+                // "created" hook, which avoids the race condition that occurs
+                // when concurrent inserts read the same "last id" value.
+                $ticket->reference_number = 'TMP-'.Str::random(24);
+            }
+        });
+
+        static::created(function (Ticket $ticket) {
+            if (str_starts_with((string) $ticket->reference_number, 'TMP-')) {
+                $ticket->reference_number = static::generateReferenceNumber($ticket->id);
+                $ticket->saveQuietly();
+            }
         });
     }
 
-    public static function generateReferenceNumber(): string
+    public static function generateReferenceNumber(int $id): string
     {
         $prefix = config('help-desk.ticket.reference_prefix', 'HD');
-        $lastTicket = static::withTrashed()->orderByDesc('id')->first();
-        $nextNumber = $lastTicket ? $lastTicket->id + 1 : 1;
 
-        return sprintf('%s-%05d', $prefix, $nextNumber);
+        return sprintf('%s-%05d', $prefix, $id);
     }
 
     public function user(): MorphTo

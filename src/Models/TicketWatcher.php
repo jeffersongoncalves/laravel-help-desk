@@ -5,16 +5,16 @@ namespace JeffersonGoncalves\HelpDesk\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property int $ticket_id
  * @property string $watcher_type
  * @property int $watcher_id
- * @property \Illuminate\Support\Carbon|null $created_at
- *
+ * @property Carbon|null $created_at
  * @property-read Ticket $ticket
- * @property-read \Illuminate\Database\Eloquent\Model|null $watcher
+ * @property-read Model|null $watcher
  */
 class TicketWatcher extends Model
 {

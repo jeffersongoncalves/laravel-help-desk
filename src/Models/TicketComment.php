@@ -3,31 +3,33 @@
 namespace JeffersonGoncalves\HelpDesk\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Database\Factories\TicketCommentFactory;
 use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 
 /**
  * @property int $id
  * @property int $ticket_id
- * @property string $author_type
- * @property int $author_id
+ * @property string|null $author_type
+ * @property int|null $author_id
  * @property string $body
  * @property CommentType $type
  * @property bool $is_internal
  * @property string|null $email_message_id
  * @property array|null $metadata
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  * @property-read Ticket $ticket
- * @property-read \Illuminate\Database\Eloquent\Model|null $author
- * @property-read \Illuminate\Database\Eloquent\Collection<int, TicketAttachment> $attachments
+ * @property-read Model|null $author
+ * @property-read Collection<int, TicketAttachment> $attachments
  */
 class TicketComment extends Model
 {
@@ -51,6 +53,11 @@ class TicketComment extends Model
         'is_internal' => 'boolean',
         'metadata' => 'array',
     ];
+
+    protected static function newFactory(): TicketCommentFactory
+    {
+        return TicketCommentFactory::new();
+    }
 
     /** @return BelongsTo<Ticket, $this> */
     public function ticket(): BelongsTo

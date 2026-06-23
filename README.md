@@ -10,8 +10,8 @@ A comprehensive help desk and ticket management system for Laravel applications 
 
 ## Requirements
 
-- PHP 8.1+
-- Laravel 10, 11, or 12
+- PHP 8.2+
+- Laravel 11, 12, or 13
 
 ## Installation
 
@@ -71,7 +71,7 @@ return [
     'email' => [
         'enabled' => true,
         'inbound' => [
-            'driver' => null, // 'imap', 'mailgun', 'sendgrid', or 'resend'
+            'driver' => null, // 'imap', 'mailgun', 'sendgrid', 'resend', or 'postmark'
         ],
     ],
 
@@ -328,6 +328,21 @@ Notifications are sent automatically when events occur (configurable via `notifi
 ### Inbound Email
 
 The package supports receiving emails via 5 drivers:
+
+> **Security: webhook secrets are mandatory.** The HTTP webhook drivers (Mailgun,
+> SendGrid, Resend, and Postmark) verify every request against a configured
+> secret/credential and **fail closed**: if the corresponding secret is not set,
+> the request is rejected with `403 Forbidden` and a warning is logged. You
+> **must** configure the secrets below for each driver you enable, otherwise the
+> endpoint will reject all traffic. The webhook routes are also rate limited by
+> default (`throttle:60,1`, configurable via `help-desk.webhooks.middleware`).
+>
+> | Driver | Required configuration |
+> |--------|------------------------|
+> | Mailgun | `HELPDESK_MAILGUN_SIGNING_KEY` |
+> | SendGrid | `HELPDESK_SENDGRID_WEBHOOK_USERNAME` + `HELPDESK_SENDGRID_WEBHOOK_PASSWORD` |
+> | Resend | `HELPDESK_RESEND_WEBHOOK_SECRET` (and `HELPDESK_RESEND_API_KEY` to fetch bodies) |
+> | Postmark | `HELPDESK_POSTMARK_WEBHOOK_USERNAME` + `HELPDESK_POSTMARK_WEBHOOK_PASSWORD` |
 
 #### IMAP
 

@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('help_desk_ticket_comments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('ticket_id')->constrained('help_desk_tickets')->cascadeOnDelete();
-            $table->string('author_type');
-            $table->unsignedBigInteger('author_id');
+            $table->string('author_type')->nullable();
+            $table->unsignedBigInteger('author_id')->nullable();
             $table->longText('body');
             $table->string('type', 16)->default('reply');
             $table->boolean('is_internal')->default(false)->index();

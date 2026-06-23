@@ -29,8 +29,8 @@ class CommentService
     {
         return DB::transaction(function () use ($ticket, $body, $options) {
             $comment = $ticket->comments()->create([
-                'author_type' => config('help-desk.models.operator'),
-                'author_id' => 0,
+                'author_type' => null,
+                'author_id' => null,
                 'body' => $body,
                 'type' => CommentType::System,
                 'is_internal' => $options['is_internal'] ?? false,

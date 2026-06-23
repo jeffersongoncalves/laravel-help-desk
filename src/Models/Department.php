@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use JeffersonGoncalves\HelpDesk\Concerns\HasSlug;
+use JeffersonGoncalves\HelpDesk\Database\Factories\DepartmentFactory;
 
 /**
  * @property int $id
@@ -46,6 +47,11 @@ class Department extends Model
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
+
+    protected static function newFactory(): DepartmentFactory
+    {
+        return DepartmentFactory::new();
+    }
 
     /** @return HasMany<Category, $this> */
     public function categories(): HasMany

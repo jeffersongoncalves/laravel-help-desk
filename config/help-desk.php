@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\User;
+
 return [
 
     /*
@@ -14,8 +16,8 @@ return [
     */
 
     'models' => [
-        'user' => \App\Models\User::class,
-        'operator' => \App\Models\User::class,
+        'user' => User::class,
+        'operator' => User::class,
     ],
 
     /*
@@ -106,7 +108,14 @@ return [
 
     'webhooks' => [
         'prefix' => 'help-desk/webhooks',
-        'middleware' => [],
+
+        /*
+        | Middleware applied to all inbound webhook routes. A throttle is
+        | enabled by default to mitigate abuse. Each webhook route also
+        | applies its own signature/credential verification middleware,
+        | which fails closed when the corresponding secret is not set.
+        */
+        'middleware' => ['throttle:60,1'],
     ],
 
     /*

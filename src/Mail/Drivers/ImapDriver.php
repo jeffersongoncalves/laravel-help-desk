@@ -5,6 +5,8 @@ namespace JeffersonGoncalves\HelpDesk\Mail\Drivers;
 use JeffersonGoncalves\HelpDesk\Contracts\EmailDriver;
 use JeffersonGoncalves\HelpDesk\Exceptions\EmailProcessingException;
 use JeffersonGoncalves\HelpDesk\Models\EmailChannel;
+use Webklex\PHPIMAP\ClientManager;
+use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
 
 class ImapDriver implements EmailDriver
 {
@@ -16,7 +18,7 @@ class ImapDriver implements EmailDriver
         $emails = [];
 
         try {
-            $client = new \Webklex\PHPIMAP\ClientManager;
+            $client = new ClientManager;
             $connection = $client->make([
                 'host' => $settings['host'],
                 'port' => $settings['port'] ?? 993,
@@ -57,7 +59,7 @@ class ImapDriver implements EmailDriver
             }
 
             $channel->markPolled();
-        } catch (\Webklex\PHPIMAP\Exceptions\ConnectionFailedException $e) {
+        } catch (ConnectionFailedException $e) {
             $channel->markError($e->getMessage());
             throw EmailProcessingException::connectionFailed($e->getMessage());
         }
@@ -72,7 +74,7 @@ class ImapDriver implements EmailDriver
 
     protected function ensureDependenciesInstalled(): void
     {
-        if (! class_exists(\Webklex\PHPIMAP\ClientManager::class)) {
+        if (! class_exists(ClientManager::class)) {
             throw EmailProcessingException::driverNotInstalled('IMAP', 'webklex/php-imap');
         }
     }

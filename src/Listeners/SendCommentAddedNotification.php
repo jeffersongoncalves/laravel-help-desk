@@ -3,6 +3,7 @@
 namespace JeffersonGoncalves\HelpDesk\Listeners;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Notifications\NewCommentNotification;
 
@@ -29,9 +30,11 @@ class SendCommentAddedNotification implements ShouldQueue
             }
         }
 
-        // Notify watchers
+        // Notify watchers (eager load the polymorphic watcher to avoid N+1)
+        $ticket->loadMissing('watchers.watcher');
+
         foreach ($ticket->watchers as $watcherPivot) {
-            /** @var \Illuminate\Database\Eloquent\Model|null $watcher */
+            /** @var Model|null $watcher */
             $watcher = $watcherPivot->watcher;
             if ($watcher && method_exists($watcher, 'notify')) {
                 if ($comment->author_type !== $watcher->getMorphClass() || $comment->author_id !== $watcher->getKey()) {

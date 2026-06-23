@@ -70,7 +70,7 @@ class TicketService
 
             event(new TicketUpdated($ticket, $changes));
 
-            return $ticket->fresh();
+            return $ticket->refresh();
         });
     }
 

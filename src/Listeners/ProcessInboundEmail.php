@@ -9,6 +9,8 @@ use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Exceptions\EmailProcessingException;
 use JeffersonGoncalves\HelpDesk\Mail\EmailParser;
 use JeffersonGoncalves\HelpDesk\Mail\ThreadResolver;
+use JeffersonGoncalves\HelpDesk\Models\Department;
+use JeffersonGoncalves\HelpDesk\Models\EmailChannel;
 use JeffersonGoncalves\HelpDesk\Models\InboundEmail;
 use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
@@ -119,14 +121,14 @@ class ProcessInboundEmail implements ShouldQueue
         // Try to match via recipient email
         $toAddresses = $inboundEmail->to_addresses ?? [];
         foreach ($toAddresses as $address) {
-            $channel = \JeffersonGoncalves\HelpDesk\Models\EmailChannel::where('email_address', $address)->first();
+            $channel = EmailChannel::where('email_address', $address)->first();
             if ($channel && $channel->department_id) {
                 return $channel->department_id;
             }
         }
 
         // Fall back to first active department
-        $department = \JeffersonGoncalves\HelpDesk\Models\Department::where('is_active', true)
+        $department = Department::where('is_active', true)
             ->orderBy('sort_order')
             ->first();
 
