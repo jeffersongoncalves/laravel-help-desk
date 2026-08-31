@@ -61,29 +61,48 @@ abstract class TestCase extends Orchestra
         $app['config']->set('help-desk.register_default_listeners', false);
     }
 
+    /**
+     * Same order as HelpDeskServiceProvider::hasMigrations(). SQLite doesn't
+     * enforce foreign keys at CREATE TABLE time, but MySQL/Postgres do, so
+     * migrations must run in dependency order, not alphabetically by stub name.
+     */
+    private const MIGRATION_ORDER = [
+        'create_help_desk_departments_table',
+        'create_help_desk_categories_table',
+        'create_help_desk_tickets_table',
+        'create_help_desk_ticket_comments_table',
+        'create_help_desk_ticket_attachments_table',
+        'create_help_desk_ticket_history_table',
+        'create_help_desk_department_operator_table',
+        'create_help_desk_ticket_watchers_table',
+        'create_help_desk_canned_responses_table',
+        'create_help_desk_email_channels_table',
+        'create_help_desk_inbound_emails_table',
+    ];
+
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
 
         $migrationPath = __DIR__.'/../database/migrations';
-        $files = glob($migrationPath.'/*.php.stub');
+        $files = [];
 
-        foreach ($files as $file) {
-            $migrationFile = $migrationPath.'/'.basename($file, '.stub');
+        foreach (self::MIGRATION_ORDER as $index => $name) {
+            $migrationFile = $migrationPath.'/'.sprintf('%03d_%s.php', $index, $name);
 
             if (! file_exists($migrationFile)) {
-                copy($file, $migrationFile);
+                copy($migrationPath.'/'.$name.'.php.stub', $migrationFile);
             }
+
+            $files[] = $migrationFile;
         }
 
         $this->loadMigrationsFrom($migrationPath);
 
-        $this->beforeApplicationDestroyed(function () use ($migrationPath, $files) {
+        $this->beforeApplicationDestroyed(function () use ($files) {
             foreach ($files as $file) {
-                $migrationFile = $migrationPath.'/'.basename($file, '.stub');
-
-                if (file_exists($migrationFile)) {
-                    unlink($migrationFile);
+                if (file_exists($file)) {
+                    unlink($file);
                 }
             }
         });
