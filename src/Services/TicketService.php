@@ -4,6 +4,7 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
@@ -126,7 +127,9 @@ class TicketService
 
     public function findByUuid(string $uuid): Ticket
     {
-        $ticket = Ticket::where('uuid', $uuid)->first();
+        // Postgres's native uuid column rejects a malformed literal with a raw
+        // SQL error instead of just finding no rows, so validate the format first.
+        $ticket = Str::isUuid($uuid) ? Ticket::where('uuid', $uuid)->first() : null;
 
         if (! $ticket) {
             throw TicketNotFoundException::withUuid($uuid);

@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Event;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Models\InboundEmail;
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Models\TicketComment;
 use JeffersonGoncalves\HelpDesk\Services\InboundEmailService;
 
 beforeEach(function () {
@@ -46,13 +48,15 @@ it('does not store duplicate emails with the same message id', function () {
 
 it('marks an email as processed', function () {
     $email = InboundEmail::factory()->create();
+    $ticket = Ticket::factory()->create();
+    $comment = TicketComment::factory()->for($ticket)->create();
 
-    $this->service->markProcessed($email, 5, 7);
+    $this->service->markProcessed($email, $ticket->id, $comment->id);
 
     expect($email->fresh())
         ->status->toBe('processed')
-        ->ticket_id->toBe(5)
-        ->comment_id->toBe(7);
+        ->ticket_id->toBe($ticket->id)
+        ->comment_id->toBe($comment->id);
 });
 
 it('marks an email as failed', function () {
