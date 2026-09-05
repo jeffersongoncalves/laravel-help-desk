@@ -6,6 +6,11 @@
 
 # Laravel Help Desk
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/jeffersongoncalves/laravel-help-desk.svg?style=flat-square)](https://packagist.org/packages/jeffersongoncalves/laravel-help-desk)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/jeffersongoncalves/laravel-help-desk/tests.yml?branch=master&label=tests&style=flat-square)](https://github.com/jeffersongoncalves/laravel-help-desk/actions?query=workflow%3Atests+branch%3Amaster)
+[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/jeffersongoncalves/laravel-help-desk/fix-php-code-style-issues.yml?branch=master&label=code%20style&style=flat-square)](https://github.com/jeffersongoncalves/laravel-help-desk/actions?query=workflow%3A"Fix+PHP+code+styling"+branch%3Amaster)
+[![PHPStan](https://img.shields.io/github/actions/workflow/status/jeffersongoncalves/laravel-help-desk/phpstan.yml?branch=master&label=PHPStan&style=flat-square)](https://github.com/jeffersongoncalves/laravel-help-desk/actions?query=workflow%3APHPStan+branch%3Amaster)
+[![Total Downloads](https://img.shields.io/packagist/dt/jeffersongoncalves/laravel-help-desk.svg?style=flat-square)](https://packagist.org/packages/jeffersongoncalves/laravel-help-desk)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/jeffersongoncalves)
 
 A comprehensive help desk and ticket management system for Laravel applications with email integration.
@@ -531,6 +536,23 @@ composer analyse
 ```bash
 composer format
 ```
+
+## Changelog
+
+Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+
+## Contributing
+
+Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
+
+## Security Vulnerabilities
+
+Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
+
+## Credits
+
+- [Jefferson Gonçalves](https://github.com/jeffersongoncalves)
+- [All Contributors](../../contributors)
 
 ## License
 
