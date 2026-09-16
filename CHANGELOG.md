@@ -10,6 +10,58 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.6.0 - 2026-09-16
+
+Closes the cross-application identity work: every polymorphic reference in the package now carries an identity snapshot. Additive — nothing existing changes behaviour.
+
+### History performers and watchers carry a snapshot
+
+`Ticket`, `TicketComment` and `TicketAttachment` already copied the person's name and email onto the row, so an application reading them without that model installed gets a name rather than a fatal `Class "..." not found`. `TicketHistory` and `TicketWatcher` did not.
+
+```php
+$entry->performer_name;
+$entry->performer_email;
+$entry->resolvedPerformer();  // the model, or null for a system action
+
+$row->watcher_name;
+$row->watcher_email;
+$row->resolvedWatcher();
+
+```
+That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
+
+Six of the nine history handlers hold the performer model and snapshot it directly. The other three — ticket created, comment added, attachment added — have only the stored morph keys, so they copy the snapshot from the row they are logging rather than loading the model back to rebuild it.
+
+A system action, with no performer, writes no snapshot at all.
+
+### The README documents the whole API
+
+Auditing the README against the public surface turned up areas with no example at all. Now covered:
+
+- **Attachments** — `store()`, `storeFromPath()`, `delete()`, the two validation helpers, `getUrl()`, `getTemporaryUrl()`, `getFileSizeForHumans()`
+- **Exceptions** — which call throws which, and why inbound email failures are not among them
+- **Ticket history** — reading it, and filtering by `HistoryAction`
+- **Comment scopes** — `public()`, `internal()`, `replies()`, `notes()`, and the four `is*()` helpers
+- **Ticket state** — `isOpen()`, `isClosed()`, `isResolved()`, `isAssigned()`, `isOverdue()`
+- **Trait relations** — all six, where two were shown before
+- `updateDepartment()` and `removeOperator()`
+
+Every snippet has a test behind it, so a rename that breaks the documentation fails the suite instead of shipping.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+php artisan vendor:publish --tag=help-desk-migrations
+php artisan migrate
+
+```
+One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
+
+Rows written before this release have no snapshot and return null from the accessors, the same forward-only behaviour v1.4.0 and v1.5.0 shipped with.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.5.0...v1.6.0
+
 ## v1.5.0 - 2026-09-16
 
 Completes the cross-application identity work started in v1.4.0. Additive: nothing existing changes behaviour, and there is no migration.
@@ -22,6 +74,7 @@ Completes the cross-application identity work started in v1.4.0. Additive: nothi
 $attachment->uploader_name;        // the live model when it resolves, the copy when it does not
 $attachment->uploader_email;
 $attachment->resolvedUploadedBy(); // the model, or null when not installed here
+
 
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
@@ -38,6 +91,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 ```
 Nothing else. No migration, no configuration change.
