@@ -58,6 +58,10 @@ The configuration file is located at `config/help-desk.php`. Key options:
 
 ```php
 return [
+    // Database connection used by the help desk tables and migrations
+    // (null = the application's default connection)
+    'connection' => env('HELPDESK_DB_CONNECTION'),
+
     // Models used by the help desk
     'models' => [
         'user'     => \App\Models\User::class,  // Model that creates tickets
@@ -89,6 +93,67 @@ return [
     ],
 ];
 ```
+
+### Dedicated Database Connection
+
+Set `help-desk.connection` to route every help desk table, model and migration to a
+connection other than the application default:
+
+```env
+HELPDESK_DB_CONNECTION=help_desk
+```
+
+```php
+// config/database.php
+'connections' => [
+    'help_desk' => [
+        'driver'   => 'mysql',
+        'host'     => env('HELPDESK_DB_HOST'),
+        'database' => env('HELPDESK_DB_DATABASE'),
+        'username' => env('HELPDESK_DB_USERNAME'),
+        'password' => env('HELPDESK_DB_PASSWORD'),
+        // ...
+    ],
+],
+```
+
+Leaving it unset keeps the current behaviour, so existing installations need no change.
+
+### Sharing One Help Desk Database Across Applications
+
+Several applications can point at the same help desk database — for example a central
+support application running the admin side, and satellite applications exposing only the
+end-user side. No migration declares a foreign key to `users`, so the tickets can live in
+a database that knows nothing about any application's user table.
+
+Each application sets the same connection credentials:
+
+```env
+HELPDESK_DB_CONNECTION=help_desk
+```
+
+The central application owns the schema. Satellite applications install the package and
+point at the connection, but must **not** publish or run the help desk migrations —
+Laravel tracks applied migrations in each application's own default connection, so a
+satellite would try to create tables that already exist.
+
+Three things need attention in this topology:
+
+- **Attachments.** `help-desk.ticket.attachment_disk` defaults to `local`, which keeps
+  uploads on the disk of whichever application received them. Point every application at a
+  **shared disk** (S3 or equivalent) so the admin side can serve files uploaded elsewhere.
+- **Requester identity.** Tickets reference their requester through a polymorphic
+  `user_type` / `user_id` pair. When applications keep separate `users` tables, register a
+  distinct morph alias per application so the keys cannot collide:
+
+  ```php
+  // AppServiceProvider::boot() of each application
+  Relation::enforceMorphMap([
+      'app-a-user' => \App\Models\User::class,
+  ]);
+  ```
+
+  Without this, user `#5` of two different applications produce the same requester key.
 
 ## Setup
 

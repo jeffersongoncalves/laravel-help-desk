@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketCommentFactory;
 use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 
@@ -33,7 +34,7 @@ use JeffersonGoncalves\HelpDesk\Enums\CommentType;
  */
 class TicketComment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_ticket_comments';
 

@@ -6,6 +6,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Database Connection
+    |--------------------------------------------------------------------------
+    |
+    | The connection used by the help desk tables and migrations. Leave it null
+    | to use the application's default connection. Point it at another
+    | connection when several applications share one help desk database — for
+    | example when satellite apps only expose the end-user side and the tickets
+    | live in a central support database.
+    |
+    */
+
+    'connection' => env('HELPDESK_DB_CONNECTION'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Models
     |--------------------------------------------------------------------------
     |
