@@ -28,17 +28,15 @@ $models = [
 $originalCentralConnection = null;
 
 beforeEach(function () use (&$originalCentralConnection) {
-    // A real connection, so nothing that resolves it by name can fail. Testbench
-    // reuses the application between some tests, and a leaked connection name
-    // would surface there as the next test's migrations blowing up.
+    // A real connection, so nothing resolving it by name can fail.
     $originalCentralConnection = config('database.connections.help_desk_central');
 
     config()->set('database.connections.help_desk_central', config('database.connections.testing'));
 });
 
 // Put back whatever was there, so this file cannot define a connection for the
-// rest of the suite. Pest runs this even when the test itself throws, and
-// tests/Pest.php resets help-desk.connection for every test.
+// rest of the suite. Safe because tests/Pest.php clears help-desk.connection in
+// its own afterEach, so no later test points at the name this one registered.
 afterEach(function () use (&$originalCentralConnection) {
     config()->set('database.connections.help_desk_central', $originalCentralConnection);
 });

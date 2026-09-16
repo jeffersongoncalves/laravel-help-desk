@@ -14,9 +14,13 @@ uses(TestCase::class)->in('Feature');
  * migrations, and a leaked "help-desk.app.key" would silently scope another
  * file's queries under a random test order.
  *
+ * This has to be afterEach. Pest runs beforeEach from inside setUp(), by which
+ * point the migrations for that test have already run against whatever the
+ * previous test left behind.
+ *
  * Every setting a test writes belongs here.
  */
-beforeEach(function () {
+afterEach(function () {
     config()->set('help-desk.connection', null);
     config()->set('help-desk.app.key', null);
     config()->set('help-desk.app.name', null);
