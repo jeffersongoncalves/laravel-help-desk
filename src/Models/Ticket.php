@@ -36,6 +36,8 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property TicketStatus $status
  * @property TicketPriority $priority
  * @property string $source
+ * @property string|null $app_key
+ * @property-read string|null $app_name
  * @property string|null $email_message_id
  * @property Carbon|null $closed_at
  * @property Carbon|null $due_at
@@ -75,6 +77,7 @@ class Ticket extends Model
         'status',
         'priority',
         'source',
+        'app_key',
         'email_message_id',
         'closed_at',
         'due_at',
@@ -98,7 +101,32 @@ class Ticket extends Model
 
     protected static function booted(): void
     {
+        // Opt-in, so the central application that handles every application's
+        // tickets is unaffected. The config is read per query rather than at
+        // boot, which keeps it testable and honours a runtime change.
+        static::addGlobalScope('helpDeskApp', function (Builder $query): void {
+            $key = config('help-desk.app.key');
+
+            if ($key !== null && config('help-desk.scope_to_app', false)) {
+                $query->where($query->getModel()->getTable().'.app_key', $key);
+            }
+        });
+
         static::creating(function (Ticket $ticket) {
+            if ($ticket->app_key === null) {
+                $ticket->app_key = config('help-desk.app.key');
+            }
+
+            if ($ticket->app_key !== null) {
+                // The central application has no configuration describing the
+                // applications it serves, so the label travels with the ticket.
+                $ticket->metadata = array_merge($ticket->metadata ?? [], [
+                    'app' => array_filter([
+                        'name' => config('help-desk.app.name'),
+                    ], fn ($value) => filled($value)),
+                ]);
+            }
+
             if (empty($ticket->uuid)) {
                 $ticket->uuid = (string) Str::uuid();
             }
@@ -216,6 +244,27 @@ class Ticket extends Model
     public function watchers(): HasMany
     {
         return $this->hasMany(TicketWatcher::class, 'ticket_id');
+    }
+
+    /**
+     * The label of the application the ticket came from, falling back to its
+     * key so the column is never blank for a ticket that has one.
+     */
+    protected function appName(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            $name = data_get($this->metadata, 'app.name');
+
+            return filled($name) ? (string) $name : $this->app_key;
+        });
+    }
+
+    /** @param Builder<static> $query */
+    public function scopeForApp(Builder $query, ?string $key): Builder
+    {
+        return $key === null
+            ? $query->whereNull('app_key')
+            : $query->where('app_key', $key);
     }
 
     /** @param Builder<static> $query */

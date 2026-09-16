@@ -62,6 +62,15 @@ return [
     // (null = the application's default connection)
     'connection' => env('HELPDESK_DB_CONNECTION'),
 
+    // Identifies this application on the tickets it creates
+    'app' => [
+        'key'  => env('HELPDESK_APP_KEY'),   // null = single application
+        'name' => env('HELPDESK_APP_NAME'),
+    ],
+
+    // Read only this application's own tickets
+    'scope_to_app' => env('HELPDESK_SCOPE_TO_APP', false),
+
     // Models used by the help desk
     'models' => [
         'user'     => \App\Models\User::class,  // Model that creates tickets
@@ -154,6 +163,39 @@ Three things need attention in this topology:
   ```
 
   Without this, user `#5` of two different applications produce the same requester key.
+
+### Telling Applications Apart
+
+Give each application a key. Tickets it creates carry it, so the central application can
+group, filter and route them:
+
+```env
+HELPDESK_APP_KEY=app-a
+HELPDESK_APP_NAME="Application A"
+```
+
+```php
+Ticket::forApp('app-a')->open()->count();
+
+$ticket->app_key;   // 'app-a'
+$ticket->app_name;  // 'Application A', falling back to the key
+```
+
+The label is stored on the ticket rather than looked up, because the central application
+has no configuration describing the applications it serves.
+
+A satellite application can also refuse to read anything but its own tickets:
+
+```env
+HELPDESK_SCOPE_TO_APP=true
+```
+
+This applies to every query on `Ticket`, not only the ones that filter by requester, and
+it complements the per-application morph alias above rather than replacing it. Leave it off
+in the central application, which needs to see them all.
+
+Both are optional: with no key configured a ticket stores none and nothing is scoped, which
+is the single-application behaviour.
 
 ### Naming People From Another Application
 
