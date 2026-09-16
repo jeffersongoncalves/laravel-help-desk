@@ -25,6 +25,15 @@ $models = [
     TicketWatcher::class,
 ];
 
+beforeEach(function () {
+    // A real connection, so nothing that resolves it by name can fail. Testbench
+    // reuses the application between some tests, and a leaked connection name
+    // would surface there as the next test's migrations blowing up.
+    config()->set('database.connections.help_desk_central', config('database.connections.testing'));
+});
+
+afterEach(fn () => config()->set('help-desk.connection', null));
+
 it('uses the default connection when none is configured', function (string $model) {
     config()->set('help-desk.connection', null);
 
@@ -46,12 +55,6 @@ it('lets an explicit setConnection win over the configured one', function () {
 });
 
 it('builds queries against the configured connection', function () {
-    config()->set('database.connections.help_desk_central', [
-        'driver' => 'sqlite',
-        'database' => ':memory:',
-        'prefix' => '',
-    ]);
-
     expect(Ticket::query()->getConnection()->getName())->toBe('testing');
 
     config()->set('help-desk.connection', 'help_desk_central');
