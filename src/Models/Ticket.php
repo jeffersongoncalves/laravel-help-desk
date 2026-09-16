@@ -3,6 +3,7 @@
 namespace JeffersonGoncalves\HelpDesk\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Concerns\ResolvesMorphedIdentity;
 use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketFactory;
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
@@ -41,6 +45,8 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property-read Model|null $user
+ * @property-read string|null $requester_name
+ * @property-read string|null $requester_email
  * @property-read Model|null $assignedTo
  * @property-read Department $department
  * @property-read Category|null $category
@@ -51,7 +57,7 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  */
 class Ticket extends Model
 {
-    use HasFactory, SoftDeletes, UsesHelpDeskConnection;
+    use HasFactory, ResolvesMorphedIdentity, SoftDeletes, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_tickets';
 
@@ -132,6 +138,43 @@ class Ticket extends Model
     public function user(): MorphTo
     {
         return $this->morphTo('user');
+    }
+
+    /**
+     * The requester, or null when their model is not installed here.
+     */
+    public function requester(): ?Model
+    {
+        return $this->resolveMorphed('user', 'user_type');
+    }
+
+    protected function requesterName(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('user', 'user_type', 'requester', 'name'));
+    }
+
+    protected function requesterEmail(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('user', 'user_type', 'requester', 'email'));
+    }
+
+    /**
+     * Notify the requester through their model, or by email alone when that
+     * model belongs to another application sharing this help desk database.
+     */
+    public function notifyRequester(Notification $notification): void
+    {
+        $requester = $this->requester();
+
+        if ($requester && method_exists($requester, 'notify')) {
+            $requester->notify($notification);
+
+            return;
+        }
+
+        if ($this->requester_email !== null) {
+            NotificationFacade::route('mail', $this->requester_email)->notify($notification);
+        }
     }
 
     public function assignedTo(): MorphTo

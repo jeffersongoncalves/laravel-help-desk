@@ -155,6 +155,48 @@ Three things need attention in this topology:
 
   Without this, user `#5` of two different applications produce the same requester key.
 
+### Naming People From Another Application
+
+An application can only load the requester of a ticket it created itself. Everywhere else
+the stored morph type points at a model that is not installed, or that lives in a database
+this application cannot reach.
+
+So the requester's name and email are **copied onto the ticket** when it is created, and
+the same is done for the author of every comment. Read them through the accessors, which
+use the live model when it resolves and the copy when it does not:
+
+```php
+$ticket->requester_name;   // 'Ada Lovelace'
+$ticket->requester_email;  // 'ada@example.com'
+
+$comment->author_name;
+$comment->author_email;
+```
+
+```php
+$ticket->requester();        // the model, or null when not installed here
+$comment->resolvedAuthor();  // same, and null for system comments
+```
+
+Reading `$ticket->user` directly still throws for a model this application does not have —
+that is Eloquent instantiating the stored class name. Use `requester()` instead.
+
+Notifications follow the same rule. `Ticket::notifyRequester()` goes through the model when
+it resolves and falls back to an on-demand mail notification to the copied address
+otherwise, so the central application can reply to a requester it cannot load.
+
+The copy is a snapshot, not a join: it records who opened the ticket at the time, and a
+later rename or deletion does not rewrite history. If your user model exposes its display
+fields under other names, override them:
+
+```php
+// App\Models\User
+public function toHelpDeskSnapshot(): array
+{
+    return ['name' => $this->full_name, 'email' => $this->contact_email];
+}
+```
+
 ## Setup
 
 ### 1. Add Traits to Your User Model
