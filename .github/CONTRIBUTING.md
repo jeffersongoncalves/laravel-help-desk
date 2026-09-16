@@ -18,7 +18,7 @@ Before submitting a pull request:
 
 ## Requirements
 
-- **Add tests!** - Your patch won't be accepted if it doesn't have tests.
+- **Add tests!** - Your patch won't be accepted if it doesn't have tests. Documentation, changelog, configuration and workflow-only changes are exempt, since there is nothing meaningful to assert.
 - **Document any change in behaviour** - Make sure the `README.md` and any other relevant documentation are kept up-to-date.
 - **Consider our release cycle** - We try to follow [SemVer v2.0.0](https://semver.org/). Randomly breaking public APIs is not an option.
 - **One pull request per feature** - If you want to do more than one thing, send multiple pull requests.
