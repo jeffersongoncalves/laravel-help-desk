@@ -132,7 +132,12 @@ Each application sets the same connection credentials:
 HELPDESK_DB_CONNECTION=help_desk
 ```
 
-Two things need attention in this topology:
+The central application owns the schema. Satellite applications install the package and
+point at the connection, but must **not** publish or run the help desk migrations —
+Laravel tracks applied migrations in each application's own default connection, so a
+satellite would try to create tables that already exist.
+
+Three things need attention in this topology:
 
 - **Attachments.** `help-desk.ticket.attachment_disk` defaults to `local`, which keeps
   uploads on the disk of whichever application received them. Point every application at a
