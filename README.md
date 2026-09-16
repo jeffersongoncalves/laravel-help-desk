@@ -156,6 +156,8 @@ Three things need attention in this topology:
   distinct morph alias per application so the keys cannot collide:
 
   ```php
+  use Illuminate\Database\Eloquent\Relations\Relation;
+
   // AppServiceProvider::boot() of each application
   Relation::enforceMorphMap([
       'app-a-user' => \App\Models\User::class,
@@ -576,8 +578,10 @@ bubble to a handler instead of branching on every call.
 All four extend `RuntimeException`.
 
 ```php
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
 use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
+use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
 
 try {
     $ticket = HelpDesk::findTicketByReference($reference);
