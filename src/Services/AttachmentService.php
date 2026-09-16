@@ -33,6 +33,7 @@ class AttachmentService
             'disk' => $disk,
             'mime_type' => $file->getMimeType(),
             'file_size' => $file->getSize(),
+            'metadata' => ['uploader' => TicketAttachment::snapshotOf($uploadedBy)],
         ]);
 
         event(new AttachmentAdded($ticket, $attachment));
@@ -58,6 +59,7 @@ class AttachmentService
             'disk' => $disk,
             'mime_type' => $mimeType,
             'file_size' => $fileSize,
+            'metadata' => ['uploader' => TicketAttachment::snapshotOf($uploadedBy)],
         ]);
 
         event(new AttachmentAdded($ticket, $attachment));

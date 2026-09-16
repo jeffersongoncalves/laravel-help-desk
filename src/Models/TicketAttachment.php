@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Concerns\ResolvesMorphedIdentity;
 use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketAttachmentFactory;
 
@@ -30,10 +32,12 @@ use JeffersonGoncalves\HelpDesk\Database\Factories\TicketAttachmentFactory;
  * @property-read Ticket $ticket
  * @property-read TicketComment|null $comment
  * @property-read Model|null $uploadedBy
+ * @property-read string|null $uploader_name
+ * @property-read string|null $uploader_email
  */
 class TicketAttachment extends Model
 {
-    use HasFactory, UsesHelpDeskConnection;
+    use HasFactory, ResolvesMorphedIdentity, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_ticket_attachments';
 
@@ -89,6 +93,24 @@ class TicketAttachment extends Model
     public function uploadedBy(): MorphTo
     {
         return $this->morphTo('uploadedBy');
+    }
+
+    /**
+     * The uploader, or null when their model is not installed here.
+     */
+    public function resolvedUploadedBy(): ?Model
+    {
+        return $this->resolveMorphed('uploadedBy', 'uploaded_by_type');
+    }
+
+    protected function uploaderName(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('uploadedBy', 'uploaded_by_type', 'uploader', 'name'));
+    }
+
+    protected function uploaderEmail(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('uploadedBy', 'uploaded_by_type', 'uploader', 'email'));
     }
 
     public function getUrl(): ?string
