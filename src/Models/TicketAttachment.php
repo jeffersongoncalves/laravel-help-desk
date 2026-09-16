@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketAttachmentFactory;
 
 /**
@@ -32,7 +33,7 @@ use JeffersonGoncalves\HelpDesk\Database\Factories\TicketAttachmentFactory;
  */
 class TicketAttachment extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_ticket_attachments';
 

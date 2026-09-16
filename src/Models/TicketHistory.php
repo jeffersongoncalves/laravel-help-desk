@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
 
 /**
@@ -25,6 +26,8 @@ use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
  */
 class TicketHistory extends Model
 {
+    use UsesHelpDeskConnection;
+
     public $timestamps = false;
 
     protected $table = 'help_desk_ticket_history';

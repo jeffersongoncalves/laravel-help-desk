@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use JeffersonGoncalves\HelpDesk\Concerns\HasSlug;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\CategoryFactory;
 
 /**
@@ -32,7 +33,7 @@ use JeffersonGoncalves\HelpDesk\Database\Factories\CategoryFactory;
  */
 class Category extends Model
 {
-    use HasFactory, HasSlug, SoftDeletes;
+    use HasFactory, HasSlug, SoftDeletes, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_categories';
 

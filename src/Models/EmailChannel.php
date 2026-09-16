@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\EmailChannelFactory;
 
 /**
@@ -28,7 +29,7 @@ use JeffersonGoncalves\HelpDesk\Database\Factories\EmailChannelFactory;
  */
 class EmailChannel extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_email_channels';
 

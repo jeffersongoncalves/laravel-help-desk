@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 
 /**
  * @property int $id
@@ -18,6 +19,8 @@ use Illuminate\Support\Carbon;
  */
 class TicketWatcher extends Model
 {
+    use UsesHelpDeskConnection;
+
     public $timestamps = false;
 
     protected $table = 'help_desk_ticket_watchers';

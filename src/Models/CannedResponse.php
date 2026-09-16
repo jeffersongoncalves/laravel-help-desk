@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 
 /**
  * @property int $id
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  */
 class CannedResponse extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_canned_responses';
 

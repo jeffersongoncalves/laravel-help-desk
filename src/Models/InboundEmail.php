@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\InboundEmailFactory;
 
 /**
@@ -36,7 +37,7 @@ use JeffersonGoncalves\HelpDesk\Database\Factories\InboundEmailFactory;
  */
 class InboundEmail extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_inbound_emails';
 
