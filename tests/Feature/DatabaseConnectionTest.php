@@ -25,14 +25,23 @@ $models = [
     TicketWatcher::class,
 ];
 
-beforeEach(function () {
+$originalCentralConnection = null;
+
+beforeEach(function () use (&$originalCentralConnection) {
     // A real connection, so nothing that resolves it by name can fail. Testbench
     // reuses the application between some tests, and a leaked connection name
     // would surface there as the next test's migrations blowing up.
+    $originalCentralConnection = config('database.connections.help_desk_central');
+
     config()->set('database.connections.help_desk_central', config('database.connections.testing'));
 });
 
-afterEach(fn () => config()->set('help-desk.connection', null));
+// Put back whatever was there, so this file cannot define a connection for the
+// rest of the suite. Pest runs this even when the test itself throws, and
+// tests/Pest.php resets help-desk.connection for every test.
+afterEach(function () use (&$originalCentralConnection) {
+    config()->set('database.connections.help_desk_central', $originalCentralConnection);
+});
 
 it('uses the default connection when none is configured', function (string $model) {
     config()->set('help-desk.connection', null);

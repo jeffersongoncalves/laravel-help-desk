@@ -6,6 +6,24 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 uses(TestCase::class)->in('Feature');
 
 /**
+ * Reset the package settings the suite writes to.
+ *
+ * Testbench reuses the application between some tests, so a value one test sets
+ * survives into the next. That already caused a CI failure visible only on MySQL
+ * and Postgres, where a leaked connection name reached the next test's
+ * migrations, and a leaked "help-desk.app.key" would silently scope another
+ * file's queries under a random test order.
+ *
+ * Every setting a test writes belongs here.
+ */
+beforeEach(function () {
+    config()->set('help-desk.connection', null);
+    config()->set('help-desk.app.key', null);
+    config()->set('help-desk.app.name', null);
+    config()->set('help-desk.scope_to_app', false);
+});
+
+/**
  * Assert that the given callback aborts with the expected HTTP status code.
  */
 function assertAbortsWith(Closure $callback, int $status): void
