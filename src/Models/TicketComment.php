@@ -3,6 +3,7 @@
 namespace JeffersonGoncalves\HelpDesk\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\ResolvesMorphedIdentity;
 use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketCommentFactory;
 use JeffersonGoncalves\HelpDesk\Enums\CommentType;
@@ -30,11 +32,13 @@ use JeffersonGoncalves\HelpDesk\Enums\CommentType;
  * @property Carbon|null $deleted_at
  * @property-read Ticket $ticket
  * @property-read Model|null $author
+ * @property-read string|null $author_name
+ * @property-read string|null $author_email
  * @property-read Collection<int, TicketAttachment> $attachments
  */
 class TicketComment extends Model
 {
-    use HasFactory, SoftDeletes, UsesHelpDeskConnection;
+    use HasFactory, ResolvesMorphedIdentity, SoftDeletes, UsesHelpDeskConnection;
 
     protected $table = 'help_desk_ticket_comments';
 
@@ -69,6 +73,25 @@ class TicketComment extends Model
     public function author(): MorphTo
     {
         return $this->morphTo('author');
+    }
+
+    /**
+     * The author, or null for a system comment and for an author whose model
+     * is not installed here.
+     */
+    public function resolvedAuthor(): ?Model
+    {
+        return $this->resolveMorphed('author', 'author_type');
+    }
+
+    protected function authorName(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('author', 'author_type', 'author', 'name'));
+    }
+
+    protected function authorEmail(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('author', 'author_type', 'author', 'email'));
     }
 
     /** @return HasMany<TicketAttachment, $this> */

@@ -52,7 +52,9 @@ class CommentService
                 'type' => $type,
                 'is_internal' => $options['is_internal'] ?? false,
                 'email_message_id' => $options['email_message_id'] ?? null,
-                'metadata' => $options['metadata'] ?? null,
+                'metadata' => array_merge($options['metadata'] ?? [], [
+                    'author' => TicketComment::snapshotOf($author),
+                ]),
             ]);
 
             if (! empty($options['attachments'])) {

@@ -28,6 +28,13 @@ class TicketService
             $ticket->user_type = $user->getMorphClass();
             $ticket->user_id = $user->getKey();
 
+            // Copied, not joined: another application sharing this database
+            // cannot load the requester, and a later rename or delete must not
+            // rewrite who opened the ticket.
+            $ticket->metadata = array_merge($ticket->metadata ?? [], [
+                'requester' => Ticket::snapshotOf($user),
+            ]);
+
             if (! isset($data['source'])) {
                 $ticket->source = 'web';
             }
