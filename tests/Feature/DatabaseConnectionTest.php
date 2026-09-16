@@ -25,14 +25,9 @@ $models = [
     TicketWatcher::class,
 ];
 
-beforeEach(function () {
-    // A real connection, so nothing that resolves it by name can fail. Testbench
-    // reuses the application between some tests, and a leaked connection name
-    // would surface there as the next test's migrations blowing up.
-    config()->set('database.connections.help_desk_central', config('database.connections.testing'));
-});
-
-afterEach(fn () => config()->set('help-desk.connection', null));
+// "help_desk_central" is a real connection for the whole suite, defined in
+// TestCase::getEnvironmentSetUp(). This file only points help-desk.connection at
+// it, and tests/Pest.php clears that in its afterEach.
 
 it('uses the default connection when none is configured', function (string $model) {
     config()->set('help-desk.connection', null);

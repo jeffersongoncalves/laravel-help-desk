@@ -17,6 +17,15 @@ function ticketFor(?string $appKey, ?string $appName = null): Ticket
     ]);
 }
 
+// Regression guard for the reset in tests/Pest.php. Pest randomises the order,
+// so this lands after a test that set these and fails if they leaked.
+it('starts with the package defaults whatever ran before', function () {
+    expect(config('help-desk.connection'))->toBeNull()
+        ->and(config('help-desk.app.key'))->toBeNull()
+        ->and(config('help-desk.app.name'))->toBeNull()
+        ->and(config('help-desk.scope_to_app'))->toBeFalse();
+});
+
 it('stamps the configured application key on new tickets', function () {
     expect(ticketFor('app-a')->app_key)->toBe('app-a');
 });
