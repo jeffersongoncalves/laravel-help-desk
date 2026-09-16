@@ -10,6 +10,40 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.5.0 - 2026-09-16
+
+Completes the cross-application identity work started in v1.4.0. Additive: nothing existing changes behaviour, and there is no migration.
+
+### Attachment uploaders carry an identity snapshot
+
+`Ticket` and `TicketComment` already copied the requester's and the author's name and email onto the row, so an application reading them without that person's model installed gets a name rather than a fatal `Class "..." not found`. `TicketAttachment` did not, and nothing displayed the uploader — which is the only reason it had not surfaced.
+
+```php
+$attachment->uploader_name;        // the live model when it resolves, the copy when it does not
+$attachment->uploader_email;
+$attachment->resolvedUploadedBy(); // the model, or null when not installed here
+
+```
+`AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
+
+Rows written before this have no snapshot and return null from the accessors, matching how the requester snapshot shipped in v1.4.0.
+
+### Known gap
+
+`AttachmentService` is not the only writer. `jeffersongoncalves/filament-help-desk` creates `TicketAttachment` straight through the model in its user-facing create page, so attachments uploaded from that panel still get no snapshot.
+
+Stamping it in the model's `creating` hook is not an option: the model holds only `uploaded_by_type` and `uploaded_by_id`, not the uploader instance to snapshot from, and loading it would be a query per attachment for a value the caller already has. `TicketAttachment::snapshotOf()` is public so that caller can pass the uploader it is already holding.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+
+```
+Nothing else. No migration, no configuration change.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.4.1...v1.5.0
+
 ## v1.4.1 - 2026-09-16
 
 Repository and packaging fixes. No change to the library itself — `git diff v1.4.0..v1.4.1 -- src/ config/ database/` is empty, so upgrading is safe and requires nothing.
