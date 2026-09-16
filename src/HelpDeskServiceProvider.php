@@ -45,6 +45,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_email_channels_table',
                 'create_help_desk_inbound_emails_table',
                 'add_app_key_to_help_desk_tickets_table',
+                'add_metadata_to_help_desk_ticket_watchers_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')

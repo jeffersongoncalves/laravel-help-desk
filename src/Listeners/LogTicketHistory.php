@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Listeners;
 
+use Illuminate\Database\Eloquent\Model;
 use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentAdded;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentRemoved;
@@ -24,6 +25,7 @@ class LogTicketHistory
             'performer_id' => $event->ticket->user_id,
             'action' => HistoryAction::Created,
             'description' => 'Ticket created.',
+            'metadata' => $this->copiedSnapshot($event->ticket->metadata, 'requester'),
         ]);
     }
 
@@ -38,6 +40,7 @@ class LogTicketHistory
             'old_value' => $event->oldStatus->value,
             'new_value' => $event->newStatus->value,
             'description' => "Status changed from {$event->oldStatus->value} to {$event->newStatus->value}.",
+            'metadata' => $this->performerSnapshot($event->performer),
         ]);
     }
 
@@ -52,6 +55,7 @@ class LogTicketHistory
             'old_value' => $event->oldPriority->value,
             'new_value' => $event->newPriority->value,
             'description' => "Priority changed from {$event->oldPriority->value} to {$event->newPriority->value}.",
+            'metadata' => $this->performerSnapshot($event->performer),
         ]);
     }
 
@@ -65,6 +69,7 @@ class LogTicketHistory
             'field' => 'assigned_to',
             'new_value' => $event->assignedTo->getKey(),
             'description' => 'Ticket assigned.',
+            'metadata' => $this->performerSnapshot($event->assignedBy),
         ]);
     }
 
@@ -76,6 +81,7 @@ class LogTicketHistory
             'performer_id' => $event->closedBy?->getKey(),
             'action' => HistoryAction::Closed,
             'description' => 'Ticket closed.',
+            'metadata' => $this->performerSnapshot($event->closedBy),
         ]);
     }
 
@@ -87,6 +93,7 @@ class LogTicketHistory
             'performer_id' => $event->reopenedBy?->getKey(),
             'action' => HistoryAction::Reopened,
             'description' => 'Ticket reopened.',
+            'metadata' => $this->performerSnapshot($event->reopenedBy),
         ]);
     }
 
@@ -98,7 +105,10 @@ class LogTicketHistory
             'performer_id' => $event->comment->author_id,
             'action' => HistoryAction::CommentAdded,
             'description' => "Comment added (type: {$event->comment->type->value}).",
-            'metadata' => ['comment_id' => $event->comment->id],
+            'metadata' => array_merge(
+                ['comment_id' => $event->comment->id],
+                $this->copiedSnapshot($event->comment->metadata, 'author'),
+            ),
         ]);
     }
 
@@ -110,7 +120,10 @@ class LogTicketHistory
             'performer_id' => $event->attachment->uploaded_by_id,
             'action' => HistoryAction::AttachmentAdded,
             'description' => "Attachment added: {$event->attachment->file_name}.",
-            'metadata' => ['attachment_id' => $event->attachment->id],
+            'metadata' => array_merge(
+                ['attachment_id' => $event->attachment->id],
+                $this->copiedSnapshot($event->attachment->metadata, 'uploader'),
+            ),
         ]);
     }
 
@@ -122,8 +135,41 @@ class LogTicketHistory
             'performer_id' => $event->removedBy?->getKey(),
             'action' => HistoryAction::AttachmentRemoved,
             'description' => "Attachment removed: {$event->attachment->file_name}.",
-            'metadata' => ['attachment_id' => $event->attachment->id],
+            'metadata' => array_merge(
+                ['attachment_id' => $event->attachment->id],
+                $this->performerSnapshot($event->removedBy),
+            ),
         ]);
+    }
+
+    /**
+     * The performer's display fields, so an application that does not have
+     * their model installed can still name who acted.
+     *
+     * @return array<string, mixed>
+     */
+    protected function performerSnapshot(?object $performer): array
+    {
+        return $performer instanceof Model
+            ? ['performer' => TicketHistory::snapshotOf($performer)]
+            : [];
+    }
+
+    /**
+     * Same thing, for the handlers that have only the stored morph keys. The
+     * row they are logging already carries the snapshot, so copy it across
+     * rather than loading the model back to build it again.
+     *
+     * @param  array<string, mixed>|null  $metadata
+     * @return array<string, mixed>
+     */
+    protected function copiedSnapshot(?array $metadata, string $key): array
+    {
+        $snapshot = $metadata[$key] ?? null;
+
+        return is_array($snapshot) && $snapshot !== []
+            ? ['performer' => $snapshot]
+            : [];
     }
 
     public function subscribe($events): array

@@ -2,10 +2,12 @@
 
 namespace JeffersonGoncalves\HelpDesk\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Concerns\ResolvesMorphedIdentity;
 use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 
 /**
@@ -15,11 +17,14 @@ use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
  * @property int $watcher_id
  * @property Carbon|null $created_at
  * @property-read Ticket $ticket
+ * @property array|null $metadata
  * @property-read Model|null $watcher
+ * @property-read string|null $watcher_name
+ * @property-read string|null $watcher_email
  */
 class TicketWatcher extends Model
 {
-    use UsesHelpDeskConnection;
+    use ResolvesMorphedIdentity, UsesHelpDeskConnection;
 
     public $timestamps = false;
 
@@ -29,10 +34,12 @@ class TicketWatcher extends Model
         'ticket_id',
         'watcher_type',
         'watcher_id',
+        'metadata',
         'created_at',
     ];
 
     protected $casts = [
+        'metadata' => 'array',
         'created_at' => 'datetime',
     ];
 
@@ -54,5 +61,23 @@ class TicketWatcher extends Model
     public function watcher(): MorphTo
     {
         return $this->morphTo('watcher');
+    }
+
+    /**
+     * The watcher, or null when their model is not installed here.
+     */
+    public function resolvedWatcher(): ?Model
+    {
+        return $this->resolveMorphed('watcher', 'watcher_type');
+    }
+
+    protected function watcherName(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('watcher', 'watcher_type', 'watcher', 'name'));
+    }
+
+    protected function watcherEmail(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->snapshotField('watcher', 'watcher_type', 'watcher', 'email'));
     }
 }
