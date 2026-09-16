@@ -21,6 +21,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Originating Application
+    |--------------------------------------------------------------------------
+    |
+    | Identifies this application on the tickets it creates, so a shared help
+    | desk database can tell them apart. Leave the key null in a single
+    | application installation.
+    |
+    | With "scope_to_app" enabled, this application only ever reads its own
+    | tickets. Leave it off in the central application that handles them all.
+    |
+    */
+
+    'app' => [
+        'key' => env('HELPDESK_APP_KEY'),
+        'name' => env('HELPDESK_APP_NAME'),
+    ],
+
+    'scope_to_app' => env('HELPDESK_SCOPE_TO_APP', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Models
     |--------------------------------------------------------------------------
     |
