@@ -59,7 +59,9 @@ it('snapshots the uploader on an uploaded file', function () {
 });
 
 it('snapshots the uploader on a file stored from a path', function () {
-    $source = sys_get_temp_dir().'/help-desk-uploader-snapshot.txt';
+    // tempnam() rather than a fixed name so parallel runs cannot collide, and
+    // removed before the assertions so a failure does not leave it behind.
+    $source = tempnam(sys_get_temp_dir(), 'help-desk-uploader-');
     file_put_contents($source, 'hello');
 
     $attachment = app(AttachmentService::class)->storeFromPath(
@@ -71,12 +73,12 @@ it('snapshots the uploader on a file stored from a path', function () {
         uploader(),
     );
 
+    unlink($source);
+
     expect($attachment->metadata['uploader'])->toBe([
         'name' => 'Grace Hopper',
         'email' => 'grace@example.com',
     ]);
-
-    unlink($source);
 });
 
 it('reads the uploader from the live model when it resolves', function () {
