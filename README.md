@@ -288,6 +288,9 @@ $department = HelpDesk::createDepartment([
 
 ```php
 HelpDesk::addOperator($department, $user, 'operator'); // 'operator', 'manager', or 'admin'
+HelpDesk::removeOperator($department, $user);
+
+HelpDesk::updateDepartment($department, ['name' => 'Support', 'is_active' => false]);
 ```
 
 ## Usage
@@ -336,6 +339,16 @@ HelpDesk::updateTicket($ticket, [
 HelpDesk::deleteTicket($ticket);
 ```
 
+State is readable straight off the model:
+
+```php
+$ticket->isOpen();      // anything that is not closed or resolved
+$ticket->isClosed();
+$ticket->isResolved();
+$ticket->isAssigned();
+$ticket->isOverdue();   // past due_at and still open
+```
+
 ### Comments
 
 ```php
@@ -350,6 +363,76 @@ $comment = HelpDesk::addComment($ticket, $user, 'See attached screenshot.', [
     'attachments' => [$uploadedFile],
 ]);
 ```
+
+Comments come in three kinds — a public `reply`, an internal `note`, and a `system`
+entry written by the package itself. Scope by kind, or by whether the end user may see
+them:
+
+```php
+$ticket->comments()->public()->get();    // everything the requester may read
+$ticket->comments()->internal()->get();  // internal notes only
+$ticket->comments()->replies()->get();   // type = reply
+$ticket->comments()->notes()->get();     // type = note
+
+$comment->isReply();
+$comment->isNote();
+$comment->isSystem();
+$comment->isInternal();
+```
+
+A system comment has no author, which is why `$comment->author` is nullable.
+
+### Attachments
+
+Attachments belong to a ticket, and optionally to one comment on it. Passing
+`attachments` to `addComment()` covers the common case; reach for the service when you
+need the attachment on its own.
+
+```php
+use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
+
+// From an uploaded file
+$attachment = HelpDesk::attachments()->store($ticket, $request->file('file'), $user);
+
+// Attached to a specific comment
+$attachment = HelpDesk::attachments()->store($ticket, $file, $user, $comment);
+
+// From a file already on disk — the inbound email path uses this
+$attachment = HelpDesk::attachments()->storeFromPath(
+    $ticket,
+    '/tmp/scan.pdf',
+    'scan.pdf',
+    'application/pdf',
+    filesize('/tmp/scan.pdf'),
+    $user,
+);
+
+// Deletes the row and the stored file, and fires AttachmentRemoved
+HelpDesk::attachments()->delete($attachment, $operator);
+```
+
+Validate before storing. Neither method enforces the limits for you — they exist so you
+can reject a file with your own message:
+
+```php
+$service = HelpDesk::attachments();
+
+$service->isAllowedExtension($file->getClientOriginalExtension()); // help-desk.ticket.allowed_extensions
+$service->isWithinSizeLimit($file->getSize() / 1024);              // help-desk.ticket.max_file_size, in KB
+```
+
+Reading one back:
+
+```php
+$attachment->getUrl();                  // public URL on the attachment's disk
+$attachment->getTemporaryUrl(5);        // signed URL, valid for 5 minutes, for private disks
+$attachment->getFileSizeForHumans();    // '1.44 MB'
+
+$attachment->uploader_name;             // see "Naming People From Another Application"
+```
+
+`getTemporaryUrl()` needs a disk that supports signed URLs, such as S3. The `local` disk
+does not.
 
 ### Watchers
 
@@ -388,6 +471,54 @@ $user->helpDeskTickets;
 
 // Operator's assigned tickets (via trait)
 $operator->helpDeskAssignedTickets;
+```
+
+The traits add more than those two. `HasTickets` gives a user:
+
+```php
+$user->helpDeskTickets;    // tickets they opened
+$user->helpDeskComments;   // comments they wrote, across every ticket
+$user->helpDeskWatching;   // TicketWatcher rows for tickets they follow
+```
+
+and `IsOperator` adds, on top of those:
+
+```php
+$operator->helpDeskAssignedTickets;  // tickets assigned to them
+$operator->helpDeskDepartments;      // departments they operate, with a `role` pivot
+$operator->helpDeskHistory;          // every action they performed
+```
+
+### Ticket History
+
+Every status change, assignment, comment and attachment is recorded, by the
+`LogTicketHistory` subscriber, as long as the default listeners are registered.
+
+```php
+use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
+
+foreach ($ticket->history()->latest()->get() as $entry) {
+    $entry->action;       // HistoryAction enum
+    $entry->field;        // 'status', 'priority', 'assigned_to', or null
+    $entry->old_value;
+    $entry->new_value;
+    $entry->description;
+    $entry->performer;    // the model that acted, null for a system action
+}
+
+$ticket->history()->where('action', HistoryAction::StatusChanged)->get();
+```
+
+`TicketHistory` does **not** carry an identity snapshot, unlike tickets, comments and
+attachments. If you share one database across applications, reading `$entry->performer`
+for a row another application wrote is fatal, not null — guard it yourself:
+
+```php
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+
+$performer = Ticket::morphIsResolvable($entry->performer_type)
+    ? $entry->performer
+    : null;
 ```
 
 ### Canned Responses
@@ -429,6 +560,44 @@ $sub = Category::create([
     'slug' => 'refunds',
 ]);
 ```
+
+## Exceptions
+
+Lookups and status changes throw rather than returning null, so a controller can let them
+bubble to a handler instead of branching on every call.
+
+| Exception | Thrown by | When |
+|---|---|---|
+| `TicketNotFoundException` | `findTicketByUuid()`, `findTicketByReference()` | No ticket matches, or the UUID is malformed |
+| `InvalidStatusTransitionException` | `changeStatus()`, `closeTicket()`, `reopenTicket()` | The current status cannot transition to the requested one — see the table below |
+| `UnauthorizedOperatorException` | Yours to throw | Provided for authorization checks; the package does not throw it for you |
+| `EmailProcessingException` | The inbound email drivers | An IMAP connection fails, `webklex/php-imap` is missing, a payload will not parse, or no active department exists to route a message to |
+
+All four extend `RuntimeException`.
+
+```php
+use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
+use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
+
+try {
+    $ticket = HelpDesk::findTicketByReference($reference);
+
+    HelpDesk::changeStatus($ticket, TicketStatus::Closed, $operator);
+} catch (TicketNotFoundException) {
+    abort(404);
+} catch (InvalidStatusTransitionException $e) {
+    return back()->withErrors($e->getMessage());
+}
+```
+
+Check first when you would rather not catch:
+
+```php
+$ticket->status->canTransitionTo(TicketStatus::Closed);
+```
+
+Inbound email failures are not thrown at you — `ProcessInboundEmail` catches them and marks
+the row failed, so the message is visible on the `InboundEmail` record rather than in a log.
 
 ## Ticket Statuses
 
