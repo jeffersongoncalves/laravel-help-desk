@@ -143,11 +143,86 @@ $comment = HelpDesk::addComment($ticket, $user, 'See attached screenshot.', [
 ]);
 ```
 
+### Scopes and kind helpers
+
+A comment is a `reply`, a `note`, or a `system` entry written by the package. A system
+comment has no author, which is why `$comment->author` is nullable.
+
+```php
+$ticket->comments()->public()->get();    // everything the requester may read
+$ticket->comments()->internal()->get();
+$ticket->comments()->replies()->get();
+$ticket->comments()->notes()->get();
+
+$comment->isReply();
+$comment->isNote();
+$comment->isSystem();
+$comment->isInternal();
+```
+
+## Attachments
+
+`addComment(['attachments' => ...])` covers the common case. Use the service when the file
+is not tied to a comment you are creating in the same call.
+
+```php
+$service = HelpDesk::attachments();
+
+// Validate first — neither method enforces the limits for you, so you can
+// reject a file with your own message
+$service->isAllowedExtension($file->getClientOriginalExtension());
+$service->isWithinSizeLimit($file->getSize() / 1024); // KB
+
+$attachment = $service->store($ticket, $file, $user);            // from an upload
+$attachment = $service->store($ticket, $file, $user, $comment);  // tied to a comment
+
+// From a file already on disk — the inbound email path uses this
+$attachment = $service->storeFromPath(
+    $ticket, '/tmp/scan.pdf', 'scan.pdf', 'application/pdf', filesize('/tmp/scan.pdf'), $user,
+);
+
+$service->delete($attachment, $operator); // removes the row and the stored file
+```
+
+Reading one back:
+
+```php
+$attachment->getUrl();
+$attachment->getTemporaryUrl(5);      // signed URL; needs S3 or similar, not `local`
+$attachment->getFileSizeForHumans();  // '1.44 MB'
+$attachment->uploader_name;
+```
+
+## Ticket History
+
+Every status change, assignment, comment and attachment is recorded by the
+`LogTicketHistory` subscriber, as long as the default listeners are registered.
+
+```php
+use JeffersonGoncalves\HelpDesk\Enums\HistoryAction;
+
+foreach ($ticket->history()->latest()->get() as $entry) {
+    $entry->action;             // HistoryAction enum
+    $entry->field;              // 'status', 'priority', 'assigned_to', or null
+    $entry->old_value;
+    $entry->new_value;
+    $entry->description;
+    $entry->performer_name;     // never read $entry->performer — see below
+}
+
+$ticket->history()->where('action', HistoryAction::StatusChanged)->get();
+```
+
 ## Watchers
 
 ```php
-HelpDesk::addWatcher($ticket, $anotherUser);
+HelpDesk::addWatcher($ticket, $anotherUser);   // adding twice is a no-op
 HelpDesk::removeWatcher($ticket, $anotherUser);
+
+foreach ($ticket->watchers as $row) {
+    $row->watcher_name;
+    $row->resolvedWatcher();
+}
 ```
 
 ## Querying Tickets
@@ -190,6 +265,88 @@ $ticket->isResolved();  // Status is Resolved
 $ticket->isAssigned();  // Has assigned operator
 $ticket->isOverdue();   // Past due_at and still open
 ```
+
+## Reading the people on a ticket
+
+**Never read the morph relation directly.** `$ticket->user`, `$comment->author`,
+`$attachment->uploadedBy`, `$entry->performer` and `$row->watcher` are fatal, not null,
+when the stored morph type names a class this application does not have — Eloquent
+instantiates the stored class name and PHP raises `Class "..." not found`.
+
+Each model stores an identity snapshot in `metadata` and exposes accessors that prefer the
+live model and fall back to the copy:
+
+```php
+$ticket->requester_name;        $ticket->requester();
+$comment->author_name;          $comment->resolvedAuthor();
+$attachment->uploader_name;     $attachment->resolvedUploadedBy();
+$entry->performer_name;         $entry->resolvedPerformer();
+$row->watcher_name;             $row->resolvedWatcher();
+```
+
+Each also has an `_email` counterpart. The `resolved*()` methods return the model, or null
+when it is not installed here — and for a system comment or a system action, which have no
+person at all.
+
+The snapshot records who acted at the time, so a later rename or delete does not rewrite
+history. A user model whose display fields are named differently overrides it:
+
+```php
+// App\Models\User
+public function toHelpDeskSnapshot(): array
+{
+    return ['name' => $this->full_name, 'email' => $this->contact_email];
+}
+```
+
+Notifications follow the same rule. `Ticket::notifyRequester()` goes through the model
+when it resolves and sends an on-demand mail notification to the snapshot address
+otherwise, so an application can reply to a requester it cannot load.
+
+## Sharing one database across applications
+
+A central support application and several satellites — each exposing only the end-user
+side — can point at the same help desk database. No migration declares a foreign key to
+`users`, so the tickets can live in a database that knows nothing about any user table.
+
+```env
+HELPDESK_DB_CONNECTION=help_desk
+HELPDESK_APP_KEY=app-a
+HELPDESK_APP_NAME="Application A"
+HELPDESK_SCOPE_TO_APP=true
+```
+
+`help-desk.connection` routes every model and every package migration. Leaving it null
+keeps the application default.
+
+Five things to get right:
+
+1. **The central application owns the schema.** Satellites install the package and set the
+   connection, but must not publish or run the help desk migrations — Laravel tracks
+   applied migrations in each application's own default connection, so a satellite would
+   try to create tables that already exist.
+2. **Morph aliases.** Applications with separate `users` tables need a distinct alias
+   each, or user `#5` of two applications produce the same requester key:
+   ```php
+   // AppServiceProvider::boot()
+   use Illuminate\Database\Eloquent\Relations\Relation;
+
+   Relation::enforceMorphMap(['app-a-user' => \App\Models\User::class]);
+   ```
+3. **Read people through the accessors**, per the section above.
+4. **Attachments need a shared disk.** `attachment_disk` defaults to `local`, which keeps
+   uploads on whichever application received them.
+5. **`scope_to_app` off in the central application**, which needs to see every ticket.
+
+```php
+Ticket::forApp('app-a')->open()->count();
+
+$ticket->app_key;   // 'app-a'
+$ticket->app_name;  // 'Application A', falling back to the key
+```
+
+The label is stored on the ticket rather than looked up, because the central application
+has no configuration describing the applications it serves.
 
 ## Using Services Directly
 
@@ -235,7 +392,9 @@ Listen to these events in your application:
 | `TicketDeleted` | `$ticket`, `$performer` |
 | `CommentAdded` | `$ticket`, `$comment` |
 | `AttachmentAdded` | `$ticket`, `$attachment` |
-| `AttachmentRemoved` | `$ticket`, `$attachment` |
+| `AttachmentRemoved` | `$ticket`, `$attachment`, `$removedBy` |
+| `InboundEmailReceived` | `$inboundEmail` |
+| `InboundEmailProcessed` | `$inboundEmail` |
 
 ### Custom event handling
 
