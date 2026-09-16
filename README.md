@@ -688,11 +688,11 @@ composer format
 
 ## Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+Please see [CHANGELOG](https://github.com/jeffersongoncalves/laravel-help-desk/blob/master/CHANGELOG.md) for more information on what has changed recently.
 
 ## Contributing
 
-Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING](https://github.com/jeffersongoncalves/laravel-help-desk/blob/master/.github/CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
