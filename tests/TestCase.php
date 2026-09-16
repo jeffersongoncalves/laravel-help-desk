@@ -52,6 +52,14 @@ abstract class TestCase extends Orchestra
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', $this->testing_connection());
 
+        // A second name for the same database, for the tests that point
+        // help-desk.connection somewhere other than the default. Defined here
+        // rather than in a test hook so it exists for the whole life of the
+        // application: Testbench reuses the application between some tests, and
+        // a connection a hook defines and tears down is missing during the
+        // setUp of the next test that reuses it.
+        $app['config']->set('database.connections.help_desk_central', $this->testing_connection());
+
         $app['config']->set('help-desk.models.user', TestUser::class);
         $app['config']->set('help-desk.models.operator', TestUser::class);
         $app['config']->set('help-desk.register_default_listeners', false);

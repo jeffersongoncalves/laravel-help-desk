@@ -25,21 +25,9 @@ $models = [
     TicketWatcher::class,
 ];
 
-$originalCentralConnection = null;
-
-beforeEach(function () use (&$originalCentralConnection) {
-    // A real connection, so nothing resolving it by name can fail.
-    $originalCentralConnection = config('database.connections.help_desk_central');
-
-    config()->set('database.connections.help_desk_central', config('database.connections.testing'));
-});
-
-// Put back whatever was there, so this file cannot define a connection for the
-// rest of the suite. Safe because tests/Pest.php clears help-desk.connection in
-// its own afterEach, so no later test points at the name this one registered.
-afterEach(function () use (&$originalCentralConnection) {
-    config()->set('database.connections.help_desk_central', $originalCentralConnection);
-});
+// "help_desk_central" is a real connection for the whole suite, defined in
+// TestCase::getEnvironmentSetUp(). This file only points help-desk.connection at
+// it, and tests/Pest.php clears that in its afterEach.
 
 it('uses the default connection when none is configured', function (string $model) {
     config()->set('help-desk.connection', null);
