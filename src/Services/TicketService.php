@@ -17,6 +17,7 @@ use JeffersonGoncalves\HelpDesk\Events\TicketUpdated;
 use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
 use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Models\TicketWatcher;
 
 class TicketService
 {
@@ -161,6 +162,8 @@ class TicketService
         $ticket->watchers()->firstOrCreate([
             'watcher_type' => $watcher->getMorphClass(),
             'watcher_id' => $watcher->getKey(),
+        ], [
+            'metadata' => ['watcher' => TicketWatcher::snapshotOf($watcher)],
         ]);
     }
 

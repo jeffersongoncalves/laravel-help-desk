@@ -206,7 +206,7 @@ the stored morph type points at a model that is not installed, or that lives in 
 this application cannot reach.
 
 So the requester's name and email are **copied onto the ticket** when it is created, and
-the same is done for the author of every comment and the uploader of every attachment.
+the same is done for every comment author, attachment uploader, history entry and watcher.
 Read them through the accessors, which use the live model when it resolves and the copy
 when it does not:
 
@@ -219,17 +219,22 @@ $comment->author_email;
 
 $attachment->uploader_name;
 $attachment->uploader_email;
+
+$historyEntry->performer_name;
+$watcherRow->watcher_name;
 ```
 
 ```php
 $ticket->requester();                // the model, or null when not installed here
 $comment->resolvedAuthor();          // same, and null for system comments
 $attachment->resolvedUploadedBy();   // same
+$historyEntry->resolvedPerformer();  // same, and null for a system action
+$watcherRow->resolvedWatcher();      // same
 ```
 
-Reading `$ticket->user`, `$comment->author` or `$attachment->uploadedBy` directly still
-throws for a model this application does not have — that is Eloquent instantiating the
-stored class name. Use the methods above instead.
+Reading the raw relation — `$ticket->user`, `$comment->author`, `$attachment->uploadedBy`,
+`$entry->performer`, `$row->watcher` — still throws for a model this application does not
+have, because Eloquent instantiates the stored class name. Use the methods above instead.
 
 Notifications follow the same rule. `Ticket::notifyRequester()` goes through the model when
 it resolves and falls back to an on-demand mail notification to the copied address
@@ -441,7 +446,15 @@ does not.
 ```php
 HelpDesk::addWatcher($ticket, $anotherUser);
 HelpDesk::removeWatcher($ticket, $anotherUser);
+
+foreach ($ticket->watchers as $row) {
+    $row->watcher_name;        // snapshot, so it survives a model this app lacks
+    $row->watcher_email;
+    $row->resolvedWatcher();   // the model, or null when not installed here
+}
 ```
+
+Adding the same watcher twice is a no-op, so you can call it without checking first.
 
 ### Querying Tickets
 
@@ -511,17 +524,18 @@ foreach ($ticket->history()->latest()->get() as $entry) {
 $ticket->history()->where('action', HistoryAction::StatusChanged)->get();
 ```
 
-`TicketHistory` does **not** carry an identity snapshot, unlike tickets, comments and
-attachments. If you share one database across applications, reading `$entry->performer`
-for a row another application wrote is fatal, not null — guard it yourself:
+Like tickets, comments and attachments, a history row carries an identity snapshot, so
+reading it from an application that does not have the performer's model installed gives a
+name rather than a crash:
 
 ```php
-use JeffersonGoncalves\HelpDesk\Models\Ticket;
-
-$performer = Ticket::morphIsResolvable($entry->performer_type)
-    ? $entry->performer
-    : null;
+$entry->performer_name;
+$entry->performer_email;
+$entry->resolvedPerformer();  // the model, or null for a system action
 ```
+
+Reading `$entry->performer` directly still throws for a model this application does not
+have. Use `resolvedPerformer()`.
 
 ### Canned Responses
 
