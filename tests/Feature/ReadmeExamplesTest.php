@@ -143,7 +143,15 @@ it('exposes the attachment service and accessors', function () {
 
     expect($attachment->getFileSizeForHumans())->toContain('MB')
         ->and($attachment->getUrl())->toBeString()
-        ->and($attachment->uploader_name)->toBe('Ada Lovelace');
+        ->and($attachment->uploader_name)->toBe('Ada Lovelace')
+        ->and($attachment->comment_id)->toBeNull();
+
+    // The four-argument form both the README and the Boost guidelines show.
+    $comment = HelpDesk::addComment($ticket, $user, 'See attached.');
+    $tied = $service->store($ticket, UploadedFile::fake()->create('note.pdf', 10), $user, $comment);
+
+    expect($tied->comment_id)->toBe($comment->id)
+        ->and($comment->attachments()->count())->toBe(1);
 
     expect($service->delete($attachment))->toBeTrue();
 });
