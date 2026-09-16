@@ -204,8 +204,9 @@ the stored morph type points at a model that is not installed, or that lives in 
 this application cannot reach.
 
 So the requester's name and email are **copied onto the ticket** when it is created, and
-the same is done for the author of every comment. Read them through the accessors, which
-use the live model when it resolves and the copy when it does not:
+the same is done for the author of every comment and the uploader of every attachment.
+Read them through the accessors, which use the live model when it resolves and the copy
+when it does not:
 
 ```php
 $ticket->requester_name;   // 'Ada Lovelace'
@@ -213,15 +214,20 @@ $ticket->requester_email;  // 'ada@example.com'
 
 $comment->author_name;
 $comment->author_email;
+
+$attachment->uploader_name;
+$attachment->uploader_email;
 ```
 
 ```php
-$ticket->requester();        // the model, or null when not installed here
-$comment->resolvedAuthor();  // same, and null for system comments
+$ticket->requester();                // the model, or null when not installed here
+$comment->resolvedAuthor();          // same, and null for system comments
+$attachment->resolvedUploadedBy();   // same
 ```
 
-Reading `$ticket->user` directly still throws for a model this application does not have —
-that is Eloquent instantiating the stored class name. Use `requester()` instead.
+Reading `$ticket->user`, `$comment->author` or `$attachment->uploadedBy` directly still
+throws for a model this application does not have — that is Eloquent instantiating the
+stored class name. Use the methods above instead.
 
 Notifications follow the same rule. `Ticket::notifyRequester()` goes through the model when
 it resolves and falls back to an on-demand mail notification to the copied address
