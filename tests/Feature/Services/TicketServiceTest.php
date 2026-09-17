@@ -115,6 +115,20 @@ it('updates status alongside other fields via update()', function () {
     });
 });
 
+it('carries the performer on TicketUpdated for a general update()', function () {
+    $performer = TestUser::create(['name' => 'Manager', 'email' => 'manager@example.com']);
+
+    $ticket = createServiceTicket();
+
+    Event::fake([TicketUpdated::class]);
+
+    $this->service->update($ticket, ['title' => 'Renamed ticket'], $performer);
+
+    Event::assertDispatched(TicketUpdated::class, function (TicketUpdated $event) use ($performer) {
+        return $event->performer !== null && $event->performer->is($performer);
+    });
+});
+
 it('allows update() to accept a status value equal to the current status', function () {
     $ticket = createServiceTicket();
 
