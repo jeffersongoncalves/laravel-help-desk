@@ -18,7 +18,7 @@ return new class extends HelpDeskMigration
             $table->json('metadata')->nullable();
             $table->timestamp('created_at')->nullable();
 
-            $table->index(['submitted_by_type', 'submitted_by_id']);
+            $table->index(['submitted_by_type', 'submitted_by_id'], 'help_desk_feedback_submitted_by_index');
         });
     }
 
