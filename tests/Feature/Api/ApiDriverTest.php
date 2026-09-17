@@ -159,6 +159,41 @@ it('keys a hydrated ticket by its uuid', function () {
         ->and($tickets->keyBy->getKey())->toHaveCount(2);
 });
 
+it('sends the filters as query parameters', function () {
+    Http::fake(['*' => Http::response(['data' => [], 'meta' => ['total' => 0]], 200)]);
+
+    app(TicketRepository::class)->forActor(
+        actorUser(),
+        status: ['open', TicketStatus::Pending],
+        priority: 'urgent',
+        search: 'scanner',
+        sort: 'last_replied_at',
+        direction: 'asc',
+    );
+
+    Http::assertSent(function ($request) {
+        $query = [];
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return $query['status'] === ['open', 'pending']
+            && $query['priority'] === ['urgent']
+            && $query['q'] === 'scanner'
+            && $query['sort'] === 'last_replied_at'
+            && $query['direction'] === 'asc';
+    });
+});
+
+it('refuses a sort the central application would refuse, before sending it', function () {
+    Http::fake();
+
+    // The same exception the database driver raises, so a panel written
+    // against the contract behaves the same on either transport.
+    expect(fn () => app(TicketRepository::class)->forActor(actorUser(), sort: 'user_id'))
+        ->toThrow(InvalidArgumentException::class, 'Tickets cannot be sorted by [user_id].');
+
+    Http::assertNothingSent();
+});
+
 it('hydrates the attachments the show response carried', function () {
     Http::fake(['*' => Http::response(ticketPayload([
         'comments' => [[
