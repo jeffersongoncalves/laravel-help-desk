@@ -10,6 +10,83 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.7.0 - 2026-09-16
+
+A second way for a satellite application to reach a central help desk: a signed HTTP API, for when it should hold no credentials for the support database at all.
+
+Everything here is additive. A single application installation, and one sharing a database connection, both behave exactly as they did in v1.6.1 — the new driver is opt-in, and with no API clients configured no endpoints are registered.
+
+### Two transports
+
+| | `database` | `api` |
+|---|---|---|
+| How | shares the central database connection | signed HTTP to the central application |
+| Needs | credentials for the support database | a shared secret |
+| Suits | applications you run, on one network | a satellite that should hold no database credentials |
+| Can do | everything | the end-user side only |
+
+```env
+HELPDESK_DRIVER=api
+HELPDESK_API_URL=https://support.example.com
+HELPDESK_APP_KEY=app-a
+HELPDESK_API_SECRET=a-long-random-string
+
+```
+Calling code does not change. The facade is the same and what comes back is still a `Ticket`, with its accessors, enum casts and `is*()` helpers intact.
+
+```php
+$ticket = HelpDesk::createTicket([...], $user);
+
+$ticket->reference_number;  // 'HD-00042'
+$ticket->isOpen();          // true
+$ticket->requester_name;    // 'Ada Lovelace'
+
+```
+### What the signature proves
+
+It proves **which application** is calling. The acting user is **asserted by** that application in the payload.
+
+So a leaked secret can impersonate any user *of that application*, and none of another: the app key comes from the signed header and never from the body, and every read is scoped by it. HMAC gives authenticity and integrity, not confidentiality — **HTTPS is still required**.
+
+```
+canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
+signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+
+```
+The method and URI are signed, not just the body, so a captured request cannot be replayed against a different endpoint. A timestamp window and a single-use nonce are both required: a window alone leaves everything inside it replayable, a nonce alone lets a capture be replayed forever.
+
+Secrets are a list per application, current first, so one rotates without a flag day.
+
+### The identity work paid for itself
+
+Nothing new was needed to represent a satellite's user. The snapshots added in v1.4.0–v1.6.0 already carry a name and email alongside the morph keys, which is exactly what the API payload sends — so events, history and notifications all work unchanged, and the central application names a requester whose model it has never seen.
+
+### What the API driver cannot do
+
+Operator actions throw immediately, naming what to use instead, rather than making a request that would be refused: updating, status changes, assignment, deletion, internal notes, watchers, and managing departments.
+
+Models that come back over the wire have no database. Reading a relation the response did not carry throws with the relation named and the API call that replaces it, rather than a missing-table SQL error. A relation the response *did* carry is returned as normal.
+
+### Attachments
+
+A file travels base64 encoded inside the JSON body, so the signature covers it like any other payload.
+
+That has a ceiling: the file grows by a third in transit and is held in memory on both ends, so `help-desk.api.max_inline_attachment` is deliberately smaller than `ticket.max_file_size`. Anything larger wants a short-lived signed upload URL, which this release does not implement.
+
+The satellite has no access to the disk, so there is no URL to hand out. `getUrl()` throws rather than returning one that would 404 for its users, and `HelpDesk::attachments()->contents($attachment, $uuid)` fetches the bytes instead.
+
+Extension and size limits are enforced on both ends — the satellite to avoid a wasted round trip, the central application because a satellite is not a trust boundary.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+
+```
+No migration. No configuration change unless you want the new transport.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.6.1...v1.7.0
+
 ## v1.6.1 - 2026-09-16
 
 Documentation only. No API change, no migration — `composer update` is the whole upgrade.
@@ -24,6 +101,7 @@ Worse than incomplete: it told an agent to read the polymorphic relations direct
 $ticket->user        // fatal, not null, when applications share a database
 $comment->author
 $attachment->uploadedBy
+
 
 ```
 Those are exactly the relations the identity snapshots added in v1.4.0–v1.6.0 exist to replace. Both guideline files now lead with that rule, because it is the one thing an agent must not get wrong.
@@ -70,6 +148,7 @@ $row->watcher_email;
 $row->resolvedWatcher();
 
 
+
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
 
@@ -99,6 +178,7 @@ php artisan vendor:publish --tag=help-desk-migrations
 php artisan migrate
 
 
+
 ```
 One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
 
@@ -121,6 +201,7 @@ $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -136,6 +217,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
