@@ -10,6 +10,48 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.6.1 - 2026-09-16
+
+Documentation only. No API change, no migration — `composer update` is the whole upgrade.
+
+### The Laravel Boost guidelines were three releases behind
+
+`resources/boost/` ships inside the package, and Laravel Boost reads it from the consumer's `vendor/` directory. It had not been touched since February, so anyone installing v1.4.0 through v1.6.0 got guidelines describing the package as it was before any of them.
+
+Worse than incomplete: it told an agent to read the polymorphic relations directly.
+
+```php
+$ticket->user        // fatal, not null, when applications share a database
+$comment->author
+$attachment->uploadedBy
+
+```
+Those are exactly the relations the identity snapshots added in v1.4.0–v1.6.0 exist to replace. Both guideline files now lead with that rule, because it is the one thing an agent must not get wrong.
+
+### What the guidelines now cover
+
+From v1.4.0 through v1.6.0:
+
+- the dedicated database connection, and that satellite applications must not run the migrations
+- `app.key` / `app.name` / `scope_to_app`, `Ticket::forApp()`, `app_key`, `app_name`
+- identity snapshots on all five models, `notifyRequester()`, `toHelpDeskSnapshot()`
+- the per-application morph alias requirement
+
+Never covered at all, in any version:
+
+- the attachment service — `store()`, `storeFromPath()`, `delete()`, both validation helpers, `getUrl()`, `getTemporaryUrl()`, `getFileSizeForHumans()`
+- comment scopes and the four `is*()` helpers
+- reading ticket history
+- the exception list, including that `EmailProcessingException` never reaches the caller
+
+Corrected: `AttachmentRemoved` takes `$removedBy`, and `InboundEmailReceived` and `InboundEmailProcessed` were missing from the events table.
+
+### One untested claim, now tested
+
+Both the README and the guidelines show `store($ticket, $file, $user, $comment)`, the four-argument form that ties an attachment to a comment. Nothing asserted it worked. The suite covers it now.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.6.0...v1.6.1
+
 ## v1.6.0 - 2026-09-16
 
 Closes the cross-application identity work: every polymorphic reference in the package now carries an identity snapshot. Additive — nothing existing changes behaviour.
@@ -26,6 +68,7 @@ $entry->resolvedPerformer();  // the model, or null for a system action
 $row->watcher_name;
 $row->watcher_email;
 $row->resolvedWatcher();
+
 
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
@@ -55,6 +98,7 @@ composer update jeffersongoncalves/laravel-help-desk
 php artisan vendor:publish --tag=help-desk-migrations
 php artisan migrate
 
+
 ```
 One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
 
@@ -76,6 +120,7 @@ $attachment->uploader_email;
 $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -91,6 +136,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 ```
