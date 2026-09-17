@@ -4,6 +4,7 @@ namespace JeffersonGoncalves\HelpDesk\Api;
 
 use Illuminate\Database\Eloquent\Model;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
+use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketAttachment;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketComment;
 
 /**
@@ -41,6 +42,17 @@ trait HydratesModels
     /**
      * @param  array<string, mixed>  $payload
      */
+    protected function hydrateAttachment(array $payload): ApiTicketAttachment
+    {
+        /** @var ApiTicketAttachment $attachment */
+        $attachment = $this->hydrate(new ApiTicketAttachment, $payload);
+
+        return $attachment;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     protected function hydrateComment(array $payload): ApiTicketComment
     {
         /** @var ApiTicketComment $comment */
@@ -66,11 +78,16 @@ trait HydratesModels
                 'name' => $payload['author_name'] ?? null,
                 'email' => $payload['author_email'] ?? null,
             ], fn ($value) => filled($value)),
+            'uploader' => array_filter([
+                'name' => $payload['uploader_name'] ?? null,
+                'email' => $payload['uploader_email'] ?? null,
+            ], fn ($value) => filled($value)),
         ], fn ($snapshot) => $snapshot !== []);
 
         unset(
             $payload['requester_name'], $payload['requester_email'],
             $payload['author_name'], $payload['author_email'],
+            $payload['uploader_name'], $payload['uploader_email'],
         );
 
         if ($metadata !== []) {

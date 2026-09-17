@@ -89,6 +89,15 @@ return [
         'secret' => env('HELPDESK_API_SECRET'),
         'timeout' => env('HELPDESK_API_TIMEOUT', 10),
 
+        /*
+        | A file sent over the API travels base64 encoded inside the JSON body,
+        | so it grows by a third and is held in memory on both sides. This cap
+        | is therefore smaller than ticket.max_file_size, and deliberately so:
+        | it is the ceiling of the inline approach, not a policy about files.
+        | Larger attachments want a signed upload URL instead.
+        */
+        'max_inline_attachment' => env('HELPDESK_API_MAX_INLINE_ATTACHMENT', 2048), // KB
+
         'prefix' => 'help-desk/api',
 
         'middleware' => ['throttle:60,1'],

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Api\HelpDeskSignature;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
+use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketAttachment;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\HelpDeskApiException;
 use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
@@ -75,14 +76,14 @@ it('throws for every operator action the documentation lists', function (string 
         'addWatcher' => fn () => HelpDesk::addWatcher($ticket, $user),
         'removeWatcher' => fn () => HelpDesk::removeWatcher($ticket, $user),
         'createDepartment' => fn () => HelpDesk::createDepartment(['name' => 'x']),
-        'storeAttachment' => fn () => HelpDesk::attachments()->storeFromPath($ticket, '/tmp/x', 'x', 'text/plain', 1, $user),
+        'deleteAttachment' => fn () => HelpDesk::attachments()->delete(new ApiTicketAttachment),
     ];
 
     expect($actions[$call])->toThrow(HelpDeskApiException::class);
 })->with([
     'updateTicket', 'changeStatus', 'closeTicket', 'reopenTicket', 'assignTicket',
     'unassignTicket', 'deleteTicket', 'addNote', 'addWatcher', 'removeWatcher',
-    'createDepartment', 'storeAttachment',
+    'createDepartment', 'deleteAttachment',
 ]);
 
 it('keeps the validation helpers working, as the guidelines say', function () {

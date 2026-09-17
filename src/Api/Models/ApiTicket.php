@@ -26,7 +26,7 @@ class ApiTicket extends Ticket
             'category' => 'Read $ticket->category_id.',
             'user' => 'Use $ticket->requester_name and $ticket->requester_email.',
             'assignedTo' => 'Assignment is an operator concern and is not exposed to satellites.',
-            'attachments' => 'Attachments over the API are not implemented yet.',
+            'attachments' => 'The show endpoint returns them: use HelpDesk::tickets()->findByUuid($uuid).',
             'history' => 'History is an operator concern and is not exposed to satellites.',
             'watchers' => 'Watchers are not exposed over the API.',
         ];
