@@ -6,6 +6,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Driver
+    |--------------------------------------------------------------------------
+    |
+    | Where the help desk data lives, from this application's point of view.
+    |
+    | "database" reads and writes it directly, through the connection below.
+    | "api" talks to a central application over a signed HTTP API and never
+    | touches the database — for a satellite that should not hold credentials
+    | for the support database at all.
+    |
+    */
+
+    'driver' => env('HELPDESK_DRIVER', 'database'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Database Connection
     |--------------------------------------------------------------------------
     |

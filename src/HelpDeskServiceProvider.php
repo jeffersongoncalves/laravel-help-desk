@@ -6,11 +6,16 @@ use Illuminate\Support\Facades\Event;
 use JeffersonGoncalves\HelpDesk\Commands\CleanInboundEmailsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CloseStaleTicketsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\PollImapMailboxCommand;
+use JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\CommentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
+use JeffersonGoncalves\HelpDesk\Exceptions\UnsupportedDriverException;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
 use JeffersonGoncalves\HelpDesk\Listeners\ProcessInboundEmail;
 use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
@@ -56,6 +61,20 @@ class HelpDeskServiceProvider extends PackageServiceProvider
             ]);
     }
 
+    /**
+     * The implementation of each repository contract, per driver.
+     *
+     * @var array<string, array<class-string, class-string>>
+     */
+    protected const DRIVERS = [
+        'database' => [
+            TicketRepository::class => TicketService::class,
+            CommentRepository::class => CommentService::class,
+            DepartmentRepository::class => DepartmentService::class,
+            AttachmentRepository::class => AttachmentService::class,
+        ],
+    ];
+
     public function packageRegistered(): void
     {
         $this->app->singleton(TicketService::class);
@@ -64,14 +83,49 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         $this->app->singleton(AttachmentService::class);
         $this->app->singleton(InboundEmailService::class);
 
+        $this->bindRepositories();
+
         $this->app->singleton(HelpDeskManager::class, function ($app) {
             return new HelpDeskManager(
-                $app->make(TicketService::class),
-                $app->make(CommentService::class),
-                $app->make(DepartmentService::class),
-                $app->make(AttachmentService::class),
+                $app->make(TicketRepository::class),
+                $app->make(CommentRepository::class),
+                $app->make(DepartmentRepository::class),
+                $app->make(AttachmentRepository::class),
             );
         });
+    }
+
+    /**
+     * Bind each repository contract to the configured driver.
+     *
+     * Deferred: the driver is read when a contract is first resolved, not at
+     * registration, so a test can switch drivers and a config cache written
+     * after boot still counts.
+     */
+    protected function bindRepositories(): void
+    {
+        $contracts = array_keys(self::DRIVERS['database']);
+
+        foreach ($contracts as $contract) {
+            $this->app->singleton($contract, function ($app) use ($contract) {
+                return $app->make($this->implementationFor($contract));
+            });
+        }
+    }
+
+    /**
+     * @param  class-string  $contract
+     * @return class-string
+     */
+    protected function implementationFor(string $contract): string
+    {
+        $driver = config('help-desk.driver', 'database');
+
+        if (! is_string($driver) || ! isset(self::DRIVERS[$driver])) {
+            throw UnsupportedDriverException::make($driver, array_keys(self::DRIVERS));
+        }
+
+        return self::DRIVERS[$driver][$contract];
     }
 
     public function packageBooted(): void

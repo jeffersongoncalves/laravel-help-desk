@@ -5,6 +5,7 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
@@ -19,7 +20,7 @@ use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketWatcher;
 
-class TicketService
+class TicketService implements TicketRepository
 {
     public function create(array $data, Model $user): Ticket
     {

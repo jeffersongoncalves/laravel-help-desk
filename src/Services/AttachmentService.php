@@ -5,13 +5,14 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentAdded;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentRemoved;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketAttachment;
 use JeffersonGoncalves\HelpDesk\Models\TicketComment;
 
-class AttachmentService
+class AttachmentService implements AttachmentRepository
 {
     public function store(Ticket $ticket, UploadedFile $file, Model $uploadedBy, ?TicketComment $comment = null): TicketAttachment
     {
