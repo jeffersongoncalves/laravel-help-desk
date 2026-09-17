@@ -55,6 +55,16 @@ class TicketService implements TicketRepository
     public function update(Ticket $ticket, array $data, ?Model $performer = null): Ticket
     {
         return DB::transaction(function () use ($ticket, $data, $performer) {
+            if (isset($data['status'])) {
+                $newStatus = $data['status'] instanceof TicketStatus
+                    ? $data['status']
+                    : TicketStatus::from($data['status']);
+
+                if ($newStatus !== $ticket->status && ! $ticket->status->canTransitionTo($newStatus)) {
+                    throw InvalidStatusTransitionException::make($ticket->status, $newStatus);
+                }
+            }
+
             $oldStatus = $ticket->status;
             $oldPriority = $ticket->priority;
 
@@ -80,7 +90,7 @@ class TicketService implements TicketRepository
                 event(new TicketPriorityChanged($ticket, $oldPriority, $ticket->priority, $performer));
             }
 
-            event(new TicketUpdated($ticket, $changes));
+            event(new TicketUpdated($ticket, $changes, $performer));
 
             return $ticket->refresh();
         });
@@ -114,7 +124,7 @@ class TicketService implements TicketRepository
         $ticket->assigned_to_id = null;
         $ticket->save();
 
-        event(new TicketUpdated($ticket, ['assigned_to_id' => null]));
+        event(new TicketUpdated($ticket, ['assigned_to_id' => null], $performer));
 
         return $ticket;
     }

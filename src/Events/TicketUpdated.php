@@ -14,5 +14,6 @@ class TicketUpdated
     public function __construct(
         public readonly Ticket $ticket,
         public readonly array $changes = [],
+        public readonly ?object $performer = null,
     ) {}
 }
