@@ -11,10 +11,13 @@ return [
     |
     | Where the help desk data lives, from this application's point of view.
     |
-    | "database" reads and writes it directly, through the connection below.
-    | "api" talks to a central application over a signed HTTP API and never
-    | touches the database — for a satellite that should not hold credentials
-    | for the support database at all.
+    | "database" reads and writes it directly, through the connection below,
+    | and is the only value available today.
+    |
+    | An "api" driver is planned, for a satellite that reaches a central
+    | application over a signed HTTP API and holds no credentials for the
+    | support database at all. Setting it before it ships throws, naming the
+    | drivers that do exist.
     |
     */
 
