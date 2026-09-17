@@ -11,13 +11,11 @@ return [
     |
     | Where the help desk data lives, from this application's point of view.
     |
-    | "database" reads and writes it directly, through the connection below,
-    | and is the only value available today.
+    | "database" reads and writes it directly, through the connection below.
     |
-    | An "api" driver is planned, for a satellite that reaches a central
-    | application over a signed HTTP API and holds no credentials for the
-    | support database at all. Setting it before it ships throws, naming the
-    | drivers that do exist.
+    | "api" reaches a central application over a signed HTTP API and holds no
+    | credentials for the support database at all. It serves the end-user side
+    | only: operator actions throw, naming what to use instead.
     |
     */
 
@@ -83,6 +81,14 @@ return [
     */
 
     'api' => [
+        /*
+        | The satellite half. Only the "api" driver reads these: the URL of the
+        | central application, and this application's own shared secret.
+        */
+        'url' => env('HELPDESK_API_URL'),
+        'secret' => env('HELPDESK_API_SECRET'),
+        'timeout' => env('HELPDESK_API_TIMEOUT', 10),
+
         'prefix' => 'help-desk/api',
 
         'middleware' => ['throttle:60,1'],
