@@ -3,6 +3,8 @@
 namespace JeffersonGoncalves\HelpDesk\Contracts;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use JeffersonGoncalves\HelpDesk\Models\Category;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 
 /**
@@ -11,6 +13,23 @@ use JeffersonGoncalves\HelpDesk\Models\Department;
  */
 interface DepartmentRepository
 {
+    /**
+     * The departments a create form may offer: active only, in sort order.
+     *
+     * Not paginated, unlike tickets — this is a select's options, and a list
+     * long enough to need pages is a different feature.
+     *
+     * @return Collection<int, Department>
+     */
+    public function all(): Collection;
+
+    /**
+     * The categories of one department, on the same terms.
+     *
+     * @return Collection<int, Category>
+     */
+    public function categoriesFor(int $departmentId): Collection;
+
     /**
      * @param  array<string, mixed>  $data
      */

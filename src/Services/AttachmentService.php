@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentAdded;
 use JeffersonGoncalves\HelpDesk\Events\AttachmentRemoved;
+use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketAttachment;
 use JeffersonGoncalves\HelpDesk\Models\TicketComment;
@@ -66,6 +67,18 @@ class AttachmentService implements AttachmentRepository
         event(new AttachmentAdded($ticket, $attachment));
 
         return $attachment;
+    }
+
+    public function contents(TicketAttachment $attachment, string $ticketUuid): string
+    {
+        // The API checks this server-side before serving the bytes. Here the
+        // caller is the only thing between a mismatched pair and a file from
+        // another ticket, so it is checked rather than assumed.
+        if ($attachment->ticket->uuid !== $ticketUuid) {
+            throw TicketNotFoundException::withUuid($ticketUuid);
+        }
+
+        return Storage::disk($attachment->disk)->get($attachment->file_path) ?? '';
     }
 
     public function delete(TicketAttachment $attachment, ?Model $removedBy = null): bool

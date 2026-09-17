@@ -3,12 +3,37 @@
 namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository;
+use JeffersonGoncalves\HelpDesk\Models\Category;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 
 class DepartmentService implements DepartmentRepository
 {
+    /**
+     * @return Collection<int, Department>
+     */
+    public function all(): Collection
+    {
+        return Department::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, Category>
+     */
+    public function categoriesFor(int $departmentId): Collection
+    {
+        return Category::query()
+            ->where('department_id', $departmentId)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+    }
+
     public function create(array $data): Department
     {
         if (empty($data['slug'])) {

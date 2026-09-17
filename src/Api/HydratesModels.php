@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketAttachment;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketComment;
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
 
 /**
  * Turns a response payload back into the models the contracts promise.
@@ -17,9 +18,14 @@ use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketComment;
 trait HydratesModels
 {
     /**
+     * Declared as Ticket, not ApiTicket, so a collection of these is a
+     * collection of what the contract promises. The object is still an
+     * ApiTicket — the subtype is an implementation detail of this transport,
+     * and nothing outside it should be typed on the difference.
+     *
      * @param  array<string, mixed>  $payload
      */
-    protected function hydrateTicket(array $payload): ApiTicket
+    protected function hydrateTicket(array $payload): Ticket
     {
         $comments = $payload['comments'] ?? null;
         unset($payload['comments']);
