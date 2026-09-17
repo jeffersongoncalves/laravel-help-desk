@@ -10,6 +10,71 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.8.0 - 2026-09-16
+
+Two changes to what a satellite application can do over the signed API, and one bug fix in how it reads a list.
+
+Nothing here changes `driver=database`. No migration.
+
+### Closing and reopening are the requester's
+
+The two transports disagreed about what an end user may do, and nobody decided that. On the database driver a user has closed and reopened their own ticket since the panels shipped. Over the API the same call threw.
+
+```php
+HelpDesk::closeTicket($ticket, $user);
+HelpDesk::reopenTicket($ticket, $user);
+
+```
+`POST /help-desk/api/tickets/{uuid}/status` takes an allow-list of exactly two values. `resolved`, `in_progress`, `pending` and `on_hold` carry operator and SLA meaning and stay unreachable from a satellite — and the allow-list is enforced by the central application, not only by the client, because a satellite is not a trust boundary.
+
+The move still goes through the transition table, so `help-desk.ticket.allow_reopen` is honoured and a refused change raises `InvalidStatusTransitionException` on either driver. The history entry names who closed it from the identity snapshot, exactly as it does for a comment.
+
+Everything else still throws:
+
+```php
+HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user);
+// HelpDeskApiException: Changing a ticket to resolved is an operator action and
+// the API driver cannot perform it.
+
+```
+The line is not "status changes are operator-only". It is "these two are yours, the rest are ours".
+
+### One call, either transport
+
+Four methods a user-facing panel needs lived only on the API implementations, so a caller typed against the contract could not reach them without branching on the driver and casting. They are on the contracts now, implemented on both sides:
+
+```php
+$tickets = HelpDesk::tickets()->forActor($user);
+$tickets = HelpDesk::tickets()->forActor($user, perPage: 15, page: 2);
+
+HelpDesk::departments()->all();
+HelpDesk::departments()->categoriesFor($department->id);
+
+HelpDesk::attachments()->contents($attachment, $ticket->uuid);
+
+```
+`forActor()` takes the user rather than falling back to whoever is authenticated. Which tickets someone may see is not a decision to make by omission.
+
+The two implementations are not equally safe by construction, which is worth knowing. Over the API the server scopes by the signed app key *and* the asserted actor, and a satellite cannot widen that. On the database driver the `where` clauses are the only guard, so they are tested against another user's ticket and against another morph type holding the same primary key.
+
+### The list was truncated
+
+`forActor()` returned only `data` from a paginated endpoint. A satellite with 63 tickets was shown 25, with no total, no page count and no error. It now keeps the totals the response was already carrying.
+
+Undocumented and unconsumed in v1.7.0, so nothing in the wild hit it — but it was wrong.
+
+`categoriesFor()` also returned raw arrays over the API where the database side returns `Category` models. Both return models now.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+
+```
+No migration, no configuration change. Applications implementing the package's repository contracts themselves need the four new methods; everything calling the facade is unaffected.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.7.0...v1.8.0
+
 ## v1.7.0 - 2026-09-16
 
 A second way for a satellite application to reach a central help desk: a signed HTTP API, for when it should hold no credentials for the support database at all.
@@ -31,6 +96,7 @@ HELPDESK_API_URL=https://support.example.com
 HELPDESK_APP_KEY=app-a
 HELPDESK_API_SECRET=a-long-random-string
 
+
 ```
 Calling code does not change. The facade is the same and what comes back is still a `Ticket`, with its accessors, enum casts and `is*()` helpers intact.
 
@@ -40,6 +106,7 @@ $ticket = HelpDesk::createTicket([...], $user);
 $ticket->reference_number;  // 'HD-00042'
 $ticket->isOpen();          // true
 $ticket->requester_name;    // 'Ada Lovelace'
+
 
 ```
 ### What the signature proves
@@ -51,6 +118,7 @@ So a leaked secret can impersonate any user *of that application*, and none of a
 ```
 canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
 signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+
 
 ```
 The method and URI are signed, not just the body, so a captured request cannot be replayed against a different endpoint. A timestamp window and a single-use nonce are both required: a window alone leaves everything inside it replayable, a nonce alone lets a capture be replayed forever.
@@ -82,6 +150,7 @@ Extension and size limits are enforced on both ends — the satellite to avoid a
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
 
+
 ```
 No migration. No configuration change unless you want the new transport.
 
@@ -101,6 +170,7 @@ Worse than incomplete: it told an agent to read the polymorphic relations direct
 $ticket->user        // fatal, not null, when applications share a database
 $comment->author
 $attachment->uploadedBy
+
 
 
 ```
@@ -149,6 +219,7 @@ $row->resolvedWatcher();
 
 
 
+
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
 
@@ -179,6 +250,7 @@ php artisan migrate
 
 
 
+
 ```
 One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
 
@@ -202,6 +274,7 @@ $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -217,6 +290,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
