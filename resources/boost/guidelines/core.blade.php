@@ -26,6 +26,37 @@ All classes are under `JeffersonGoncalves\HelpDesk`.
 - Translations are namespaced as `help-desk::` (e.g., `__('help-desk::statuses.open')`)
 - **Never read a polymorphic relation directly.** See "Reading people" below
 
+### Drivers (check this first)
+
+`help-desk.driver` decides what is possible. Check it before writing anything.
+
+- **`database`** (default) — reads and writes the database directly. Everything works.
+- **`api`** — a satellite talking to a central application over a signed HTTP API. It has
+  **no help desk tables at all**.
+
+On the `api` driver:
+
+- The facade is the only entry point. `Ticket::query()`, `Ticket::open()` and every other
+  Eloquent call hit tables that do not exist
+- Models that come back are hydrated, not persisted. Reading a relation the response did
+  not carry throws `HelpDeskApiException`, naming the API call to use instead
+- Operator actions throw: updating, status changes, assignment, deletion, internal notes,
+  watchers, managing departments, and attachments
+- What works: `createTicket()`, `findTicketByUuid()`, `findTicketByReference()`,
+  `addComment()`, and the accessors and `is*()` helpers on what comes back
+
+@verbatim
+<code-snippet name="Satellite configuration" lang="env">
+HELPDESK_DRIVER=api
+HELPDESK_API_URL=https://support.example.com
+HELPDESK_APP_KEY=app-a
+HELPDESK_API_SECRET=a-long-random-string
+</code-snippet>
+@endverbatim
+
+The signature proves which application is calling; the acting user is asserted by that
+application. HTTPS is still required — HMAC gives authenticity, not confidentiality.
+
 ### Reading people (important)
 
 Five models point at a person through a morph: `Ticket::user`, `TicketComment::author`,

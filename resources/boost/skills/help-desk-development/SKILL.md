@@ -303,6 +303,73 @@ Notifications follow the same rule. `Ticket::notifyRequester()` goes through the
 when it resolves and sends an on-demand mail notification to the snapshot address
 otherwise, so an application can reply to a requester it cannot load.
 
+## Choosing a transport
+
+A satellite reaches the help desk one of two ways. Check `help-desk.driver` before writing
+anything, because it decides what is possible.
+
+| | `database` | `api` |
+|---|---|---|
+| How | shares the central database connection | signed HTTP to the central application |
+| Needs | credentials for the support database | a shared secret |
+| Can do | everything | the end-user side only |
+
+## Talking over the signed API
+
+For a satellite that should hold no database credentials. Calling code does not change —
+the facade is the same and what comes back is still a `Ticket`.
+
+```env
+# satellite
+HELPDESK_DRIVER=api
+HELPDESK_API_URL=https://support.example.com
+HELPDESK_APP_KEY=app-a
+HELPDESK_API_SECRET=a-long-random-string
+```
+
+```php
+// config/help-desk.php on the central application
+'api' => [
+    'clients' => [
+        'app-a' => [
+            'secrets' => [env('HELPDESK_SECRET_APP_A'), env('HELPDESK_SECRET_APP_A_PREVIOUS')],
+            'actor_types' => ['app-a-user'],
+        ],
+    ],
+],
+```
+
+Two secrets, current first, so one rotates without a flag day. No clients configured means
+no API routes are registered at all.
+
+### What does not work on the api driver
+
+```php
+// Eloquent: there are no help desk tables on a satellite
+Ticket::query()->open()->get();      // table does not exist
+
+// Operator actions: these throw before making a request
+HelpDesk::closeTicket($ticket);
+HelpDesk::assignTicket($ticket, $operator);
+HelpDesk::addNote($ticket, $operator, 'internal');
+HelpDesk::attachments()->store(...);  // not implemented yet
+
+// Relations the response did not carry
+$ticket->comments;
+// HelpDeskApiException: Relation [comments] on ApiTicket needs the database driver.
+// The show endpoint returns them: use HelpDesk::tickets()->findByUuid($uuid).
+```
+
+A relation the response **did** carry is returned as normal, so the comments on a ticket
+fetched by uuid are there.
+
+### The trust model
+
+The signature proves **which application** is calling. The acting user is **asserted by**
+that application, so a leaked secret impersonates any user of that application and none of
+another. HMAC gives authenticity and integrity, not confidentiality — HTTPS is still
+required.
+
 ## Sharing one database across applications
 
 A central support application and several satellites — each exposing only the end-user
