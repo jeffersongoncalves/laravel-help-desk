@@ -29,6 +29,7 @@ use JeffersonGoncalves\HelpDesk\Listeners\SendTicketStatusChangedNotification;
 use JeffersonGoncalves\HelpDesk\Services\AttachmentService;
 use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
+use JeffersonGoncalves\HelpDesk\Services\FeedbackService;
 use JeffersonGoncalves\HelpDesk\Services\InboundEmailService;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
 use Spatie\LaravelPackageTools\Package;
@@ -55,6 +56,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_inbound_emails_table',
                 'add_app_key_to_help_desk_tickets_table',
                 'add_metadata_to_help_desk_ticket_watchers_table',
+                'create_help_desk_ticket_feedback_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -92,6 +94,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         $this->app->singleton(DepartmentService::class);
         $this->app->singleton(AttachmentService::class);
         $this->app->singleton(InboundEmailService::class);
+        $this->app->singleton(FeedbackService::class);
 
         $this->bindRepositories();
 

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notification;
@@ -58,6 +59,7 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property-read Collection<int, TicketAttachment> $attachments
  * @property-read Collection<int, TicketHistory> $history
  * @property-read Collection<int, TicketWatcher> $watchers
+ * @property-read TicketFeedback|null $feedback
  */
 class Ticket extends Model
 {
@@ -253,6 +255,12 @@ class Ticket extends Model
     public function watchers(): HasMany
     {
         return $this->hasMany(TicketWatcher::class, 'ticket_id');
+    }
+
+    /** @return HasOne<TicketFeedback, $this> */
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(TicketFeedback::class, 'ticket_id');
     }
 
     /**
@@ -491,6 +499,33 @@ class Ticket extends Model
     public function isOverdue(): bool
     {
         return $this->due_at !== null && $this->due_at->isPast() && $this->isOpen();
+    }
+
+    /**
+     * Whether a requester may still submit CSAT feedback: the ticket has
+     * reached a terminal-enough state (closed or resolved), nobody has
+     * submitted feedback for it yet, and the configured window since it got
+     * there has not elapsed.
+     */
+    public function canReceiveFeedback(): bool
+    {
+        if (! $this->isClosed() && ! $this->isResolved()) {
+            return false;
+        }
+
+        if ($this->feedback !== null) {
+            return false;
+        }
+
+        $since = $this->closed_at ?? $this->updated_at;
+
+        if ($since === null) {
+            return false;
+        }
+
+        $windowDays = config('help-desk.feedback.window_days', 14);
+
+        return $since->copy()->addDays($windowDays)->isFuture();
     }
 
     public function getRouteKeyName(): string
