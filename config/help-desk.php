@@ -42,6 +42,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Signed API
+    |--------------------------------------------------------------------------
+    |
+    | Used when satellite applications reach the help desk over HTTP instead of
+    | a shared database connection.
+    |
+    | "tolerance" is how many seconds a request's timestamp may be away from
+    | now, in either direction. A nonce is also required and consumed once, so
+    | a captured request cannot simply be replayed inside that window.
+    |
+    | Each client is keyed by its app key — the same value tickets carry — and
+    | holds a list of secrets. Keep the current one first and the previous one
+    | second to rotate without a flag day: deploy the new secret, roll the
+    | satellites, then drop the old entry.
+    |
+    | The signature proves which application is calling. The acting user is
+    | asserted by that application, so a leaked secret can impersonate any user
+    | of that application and none of another.
+    |
+    */
+
+    'api' => [
+        'tolerance' => env('HELPDESK_API_TOLERANCE', 300),
+
+        'clients' => [
+            // 'app-a' => [
+            //     'secrets' => [
+            //         env('HELPDESK_SECRET_APP_A'),
+            //         env('HELPDESK_SECRET_APP_A_PREVIOUS'),
+            //     ],
+            // ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Models
     |--------------------------------------------------------------------------
     |
