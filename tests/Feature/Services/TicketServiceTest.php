@@ -78,6 +78,51 @@ it('throws exception on invalid status transition', function () {
     $this->service->changeStatus($ticket, TicketStatus::InProgress);
 })->throws(InvalidStatusTransitionException::class);
 
+it('throws exception on invalid status transition via update()', function () {
+    $ticket = createServiceTicket(['status' => TicketStatus::Closed]);
+
+    $this->service->update($ticket, ['status' => TicketStatus::InProgress]);
+})->throws(InvalidStatusTransitionException::class);
+
+it('does not fire status events twice when update() changes status', function () {
+    $ticket = createServiceTicket();
+
+    Event::fake([TicketStatusChanged::class, TicketUpdated::class]);
+
+    $updated = $this->service->update($ticket, ['status' => TicketStatus::InProgress]);
+
+    expect($updated->status)->toBe(TicketStatus::InProgress);
+
+    Event::assertDispatchedTimes(TicketStatusChanged::class, 1);
+    Event::assertDispatchedTimes(TicketUpdated::class, 1);
+});
+
+it('updates status alongside other fields via update()', function () {
+    $ticket = createServiceTicket();
+
+    Event::fake([TicketStatusChanged::class, TicketUpdated::class]);
+
+    $updated = $this->service->update($ticket, [
+        'status' => TicketStatus::InProgress,
+        'title' => 'Renamed ticket',
+    ]);
+
+    expect($updated->status)->toBe(TicketStatus::InProgress)
+        ->and($updated->title)->toBe('Renamed ticket');
+
+    Event::assertDispatched(TicketUpdated::class, function (TicketUpdated $event) {
+        return array_key_exists('status', $event->changes) && array_key_exists('title', $event->changes);
+    });
+});
+
+it('allows update() to accept a status value equal to the current status', function () {
+    $ticket = createServiceTicket();
+
+    $updated = $this->service->update($ticket, ['status' => $ticket->status]);
+
+    expect($updated->status)->toBe($ticket->status);
+});
+
 it('closes a ticket', function () {
     $ticket = createServiceTicket();
 
@@ -108,15 +153,47 @@ it('assigns a ticket to an operator', function () {
         'email' => 'operator@example.com',
     ]);
 
+    $assignedBy = TestUser::create([
+        'name' => 'Manager',
+        'email' => 'manager@example.com',
+    ]);
+
     $ticket = createServiceTicket();
 
     Event::fake([TicketAssigned::class]);
 
-    $assigned = $this->service->assign($ticket, $operator);
+    $assigned = $this->service->assign($ticket, $operator, $assignedBy);
 
     expect($assigned->assigned_to_id)->toBe($operator->id);
 
-    Event::assertDispatched(TicketAssigned::class);
+    Event::assertDispatched(TicketAssigned::class, function (TicketAssigned $event) use ($operator, $assignedBy) {
+        return $event->assignedTo->is($operator) && $event->assignedBy->is($assignedBy);
+    });
+});
+
+it('unassigns a ticket and carries the performer on the event', function () {
+    $operator = TestUser::create([
+        'name' => 'Operator',
+        'email' => 'operator@example.com',
+    ]);
+
+    $performer = TestUser::create([
+        'name' => 'Manager',
+        'email' => 'manager@example.com',
+    ]);
+
+    $ticket = createServiceTicket();
+    $this->service->assign($ticket, $operator);
+
+    Event::fake([TicketUpdated::class]);
+
+    $unassigned = $this->service->unassign($ticket, $performer);
+
+    expect($unassigned->assigned_to_id)->toBeNull();
+
+    Event::assertDispatched(TicketUpdated::class, function (TicketUpdated $event) use ($performer) {
+        return $event->performer !== null && $event->performer->is($performer);
+    });
 });
 
 it('finds a ticket by uuid', function () {
