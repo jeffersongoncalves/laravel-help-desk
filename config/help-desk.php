@@ -259,6 +259,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Feedback (CSAT) Settings
+    |--------------------------------------------------------------------------
+    |
+    | How many days after a ticket reaches a closed or resolved state a
+    | requester may still submit satisfaction feedback for it.
+    |
+    */
+
+    'feedback' => [
+        'window_days' => 14,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Register Default Listeners
     |--------------------------------------------------------------------------
     |
