@@ -50,3 +50,29 @@ it('has limited transitions for resolved status', function () {
         ->toContain(TicketStatus::Open)
         ->toContain(TicketStatus::Closed);
 });
+
+it('exposes the linear pipeline in order', function () {
+    expect(TicketStatus::pipelineSteps())->toBe([
+        TicketStatus::Open,
+        TicketStatus::InProgress,
+        TicketStatus::Resolved,
+        TicketStatus::Closed,
+    ]);
+});
+
+it('maps pending and on hold onto the in-progress step', function () {
+    expect(TicketStatus::Pending->pipelineStep())->toBe(TicketStatus::InProgress)
+        ->and(TicketStatus::OnHold->pipelineStep())->toBe(TicketStatus::InProgress);
+});
+
+it('maps every pipeline status onto itself', function () {
+    foreach (TicketStatus::pipelineSteps() as $status) {
+        expect($status->pipelineStep())->toBe($status);
+    }
+});
+
+it('always resolves pipelineStep() to a member of pipelineSteps()', function () {
+    foreach (TicketStatus::cases() as $status) {
+        expect(TicketStatus::pipelineSteps())->toContain($status->pipelineStep());
+    }
+});

@@ -35,4 +35,29 @@ enum TicketStatus: string
     {
         return in_array($status, $this->allowedTransitions());
     }
+
+    /**
+     * The linear happy-path a visual stepper renders, as opposed to
+     * allowedTransitions()'s branching, loopable graph. Pending and OnHold
+     * are suspensions of this line, not steps on it — see pipelineStep().
+     *
+     * @return array<TicketStatus>
+     */
+    public static function pipelineSteps(): array
+    {
+        return [self::Open, self::InProgress, self::Resolved, self::Closed];
+    }
+
+    /**
+     * Which pipelineSteps() entry this status sits at for stepper display.
+     * Pending/OnHold map onto InProgress, since the ticket is still being
+     * worked, just currently waiting on someone else.
+     */
+    public function pipelineStep(): self
+    {
+        return match ($this) {
+            self::Pending, self::OnHold => self::InProgress,
+            default => $this,
+        };
+    }
 }
