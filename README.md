@@ -346,7 +346,44 @@ HelpDesk::closeTicket($ticket);
 ```
 
 That covers updating, status changes, assignment, deletion, internal notes, watchers, and
-managing departments. Attachments are not implemented over the API yet.
+managing departments.
+
+#### Attachments
+
+A file travels base64 encoded inside the JSON body, so the signature covers it like any
+other payload and no multipart handling is involved.
+
+```php
+$attachment = HelpDesk::attachments()->store($ticket, $request->file('file'), $user);
+
+$attachment->file_name;      // 'invoice.pdf'
+$attachment->uploader_name;  // 'Ada Lovelace'
+```
+
+The cost of sending it inline is a cap, because the file grows by a third in transit and is
+held in memory on both ends:
+
+```env
+HELPDESK_API_MAX_INLINE_ATTACHMENT=2048   # KB, on both ends
+```
+
+Deliberately smaller than `help-desk.ticket.max_file_size` — it is the ceiling of the
+inline approach, not a policy about files. Something larger wants a signed upload URL,
+which this does not implement.
+
+The satellite has no access to the disk the file sits on, so there is no URL to hand out:
+
+```php
+$attachment->getUrl();
+// HelpDeskApiException: getUrl() is not available on the API driver… Use
+// HelpDesk::attachments()->contents($attachment) to fetch the bytes instead.
+
+$bytes = HelpDesk::attachments()->contents($attachment, $ticket->uuid);
+```
+
+Extension and size limits are enforced on **both** ends. The satellite checks first to
+avoid spending a round trip, and the central application checks again because a satellite
+is not a trust boundary.
 
 Relations are the other limit. A model that came back over the wire has no database to
 join against, so reading a relation the response did not carry throws rather than

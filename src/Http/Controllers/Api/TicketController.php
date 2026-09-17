@@ -59,6 +59,11 @@ class TicketController
             $ticket->comments()->public()->oldest()->get(),
         );
 
+        $ticket->setRelation(
+            'attachments',
+            $ticket->attachments()->oldest()->get(),
+        );
+
         return TicketResource::make($ticket);
     }
 }

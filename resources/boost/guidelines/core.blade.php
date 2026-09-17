@@ -41,7 +41,10 @@ On the `api` driver:
 - Models that come back are hydrated, not persisted. Reading a relation the response did
   not carry throws `HelpDeskApiException`, naming the API call to use instead
 - Operator actions throw: updating, status changes, assignment, deletion, internal notes,
-  watchers, managing departments, and attachments
+  watchers and managing departments
+- Attachments upload fine, but the satellite has no disk: `getUrl()` throws, and
+  `HelpDesk::attachments()->contents($attachment, $uuid)` fetches the bytes. A file is sent
+  inline and capped by `help-desk.api.max_inline_attachment`
 - What works: `createTicket()`, `findTicketByUuid()`, `findTicketByReference()`,
   `addComment()`, and the accessors and `is*()` helpers on what comes back
 

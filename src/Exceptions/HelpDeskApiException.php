@@ -49,6 +49,24 @@ class HelpDeskApiException extends RuntimeException
         return new self("{$what} over the API is not implemented yet. Use the database driver, or wait for the attachment phase.");
     }
 
+    public static function tooLargeInline(int $sizeInKb, int $limitInKb): self
+    {
+        return new self(
+            "This file is {$sizeInKb} KB and the API sends attachments inline, which is capped at "
+            ."{$limitInKb} KB. Raise help-desk.api.max_inline_attachment on both ends, or use the "
+            .'database driver for files this size.',
+        );
+    }
+
+    public static function noDisk(string $method): self
+    {
+        return new self(
+            "{$method} is not available on the API driver: the file is on the central application's "
+            .'disk, which this application has no credentials for. Use '
+            .'HelpDesk::attachments()->contents($attachment) to fetch the bytes instead.',
+        );
+    }
+
     public static function noActor(): self
     {
         return new self(

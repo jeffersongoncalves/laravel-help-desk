@@ -16,7 +16,7 @@ class ApiTicketComment extends TicketComment
         return [
             'ticket' => 'Keep the ticket you already have, or fetch it with HelpDesk::tickets()->findByUuid($uuid).',
             'author' => 'Use $comment->author_name and $comment->author_email.',
-            'attachments' => 'Attachments over the API are not implemented yet.',
+            'attachments' => 'The show endpoint returns them: use HelpDesk::tickets()->findByUuid($uuid).',
         ];
     }
 }

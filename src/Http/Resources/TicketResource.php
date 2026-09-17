@@ -40,6 +40,9 @@ class TicketResource extends JsonResource
             'comments' => TicketCommentResource::collection(
                 $this->whenLoaded('comments'),
             ),
+            'attachments' => TicketAttachmentResource::collection(
+                $this->whenLoaded('attachments'),
+            ),
         ];
     }
 }

@@ -218,6 +218,6 @@ it('publishes only the fields the resource lists', function () {
         'uuid', 'reference_number', 'department_id', 'category_id', 'title',
         'description', 'status', 'priority', 'source', 'app_key',
         'requester_name', 'requester_email', 'closed_at', 'due_at',
-        'last_replied_at', 'created_at', 'updated_at', 'comments',
+        'last_replied_at', 'created_at', 'updated_at', 'comments', 'attachments',
     ]);
 });

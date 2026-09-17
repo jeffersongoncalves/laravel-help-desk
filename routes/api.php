@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use JeffersonGoncalves\HelpDesk\Http\Controllers\Api\AttachmentController;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\Api\CommentController;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\Api\DepartmentController;
 use JeffersonGoncalves\HelpDesk\Http\Controllers\Api\TicketController;
@@ -25,6 +26,9 @@ Route::prefix(config('help-desk.api.prefix', 'help-desk/api'))
         Route::get('tickets/{uuid}', [TicketController::class, 'show'])->name('help-desk.api.tickets.show');
 
         Route::post('tickets/{uuid}/comments', [CommentController::class, 'store'])->name('help-desk.api.comments.store');
+
+        Route::post('tickets/{uuid}/attachments', [AttachmentController::class, 'store'])->name('help-desk.api.attachments.store');
+        Route::get('tickets/{uuid}/attachments/{attachment}', [AttachmentController::class, 'show'])->name('help-desk.api.attachments.show');
 
         Route::get('departments', [DepartmentController::class, 'index'])->name('help-desk.api.departments.index');
         Route::get('departments/{department}/categories', [DepartmentController::class, 'categories'])->name('help-desk.api.departments.categories');

@@ -352,7 +352,10 @@ Ticket::query()->open()->get();      // table does not exist
 HelpDesk::closeTicket($ticket);
 HelpDesk::assignTicket($ticket, $operator);
 HelpDesk::addNote($ticket, $operator, 'internal');
-HelpDesk::attachments()->store(...);  // not implemented yet
+
+// Attachments: uploading works, but there is no disk to serve from
+$attachment->getUrl();                 // throws
+HelpDesk::attachments()->contents($attachment, $ticket->uuid);  // fetch the bytes
 
 // Relations the response did not carry
 $ticket->comments;
