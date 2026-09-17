@@ -18,9 +18,11 @@ use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
+use JeffersonGoncalves\HelpDesk\Events\TicketFeedbackSubmitted;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
 use JeffersonGoncalves\HelpDesk\Exceptions\UnsupportedDriverException;
 use JeffersonGoncalves\HelpDesk\Listeners\ApplySlaPolicy;
+use JeffersonGoncalves\HelpDesk\Listeners\AutoReopenOnLowFeedbackRating;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
 use JeffersonGoncalves\HelpDesk\Listeners\ProcessInboundEmail;
 use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
@@ -30,6 +32,7 @@ use JeffersonGoncalves\HelpDesk\Listeners\SendTicketStatusChangedNotification;
 use JeffersonGoncalves\HelpDesk\Services\AttachmentService;
 use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
+use JeffersonGoncalves\HelpDesk\Services\FeedbackService;
 use JeffersonGoncalves\HelpDesk\Services\InboundEmailService;
 use JeffersonGoncalves\HelpDesk\Services\SlaService;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
@@ -57,6 +60,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_inbound_emails_table',
                 'add_app_key_to_help_desk_tickets_table',
                 'add_metadata_to_help_desk_ticket_watchers_table',
+                'create_help_desk_ticket_feedback_table',
                 'create_help_desk_sla_policies_table',
                 'add_sla_to_help_desk_tickets_table',
             ])
@@ -96,6 +100,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         $this->app->singleton(DepartmentService::class);
         $this->app->singleton(AttachmentService::class);
         $this->app->singleton(InboundEmailService::class);
+        $this->app->singleton(FeedbackService::class);
         $this->app->singleton(SlaService::class);
 
         $this->bindRepositories();
@@ -182,6 +187,9 @@ class HelpDeskServiceProvider extends PackageServiceProvider
 
         // Inbound email processing
         Event::listen(InboundEmailReceived::class, ProcessInboundEmail::class);
+
+        // CSAT auto-reopen (also config-gated internally, off by default)
+        Event::listen(TicketFeedbackSubmitted::class, AutoReopenOnLowFeedbackRating::class);
 
         // SLA due-date calculation
         Event::listen(TicketCreated::class, ApplySlaPolicy::class);

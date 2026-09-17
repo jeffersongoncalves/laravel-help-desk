@@ -259,6 +259,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Feedback (CSAT) Settings
+    |--------------------------------------------------------------------------
+    |
+    | How many days after a ticket reaches a closed or resolved state a
+    | requester may still submit satisfaction feedback for it.
+    |
+    */
+
+    'feedback' => [
+        'window_days' => 14,
+
+        // Reopens a ticket automatically when the submitted rating is at or
+        // below the threshold. Off by default: this changes what happens
+        // after a customer submits feedback, and an existing install should
+        // not have its tickets start reopening themselves without opting in.
+        'auto_reopen' => [
+            'enabled' => false,
+            'rating_threshold' => 1,
+            'comment' => 'Ticket automatically reopened due to a low satisfaction rating.',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Register Default Listeners
     |--------------------------------------------------------------------------
     |
