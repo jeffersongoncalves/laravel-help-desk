@@ -18,8 +18,10 @@ use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
+use JeffersonGoncalves\HelpDesk\Events\TicketFeedbackSubmitted;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
 use JeffersonGoncalves\HelpDesk\Exceptions\UnsupportedDriverException;
+use JeffersonGoncalves\HelpDesk\Listeners\AutoReopenOnLowFeedbackRating;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
 use JeffersonGoncalves\HelpDesk\Listeners\ProcessInboundEmail;
 use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
@@ -180,5 +182,8 @@ class HelpDeskServiceProvider extends PackageServiceProvider
 
         // Inbound email processing
         Event::listen(InboundEmailReceived::class, ProcessInboundEmail::class);
+
+        // CSAT auto-reopen (also config-gated internally, off by default)
+        Event::listen(TicketFeedbackSubmitted::class, AutoReopenOnLowFeedbackRating::class);
     }
 }
