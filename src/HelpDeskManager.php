@@ -3,22 +3,22 @@
 namespace JeffersonGoncalves\HelpDesk;
 
 use Illuminate\Database\Eloquent\Model;
+use JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\CommentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketComment;
-use JeffersonGoncalves\HelpDesk\Services\AttachmentService;
-use JeffersonGoncalves\HelpDesk\Services\CommentService;
-use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
-use JeffersonGoncalves\HelpDesk\Services\TicketService;
 
 class HelpDeskManager
 {
     public function __construct(
-        protected TicketService $ticketService,
-        protected CommentService $commentService,
-        protected DepartmentService $departmentService,
-        protected AttachmentService $attachmentService,
+        protected TicketRepository $ticketService,
+        protected CommentRepository $commentService,
+        protected DepartmentRepository $departmentService,
+        protected AttachmentRepository $attachmentService,
     ) {}
 
     public function createTicket(array $data, Model $user): Ticket
@@ -111,22 +111,22 @@ class HelpDeskManager
         $this->departmentService->removeOperator($department, $operator);
     }
 
-    public function tickets(): TicketService
+    public function tickets(): TicketRepository
     {
         return $this->ticketService;
     }
 
-    public function comments(): CommentService
+    public function comments(): CommentRepository
     {
         return $this->commentService;
     }
 
-    public function departments(): DepartmentService
+    public function departments(): DepartmentRepository
     {
         return $this->departmentService;
     }
 
-    public function attachments(): AttachmentService
+    public function attachments(): AttachmentRepository
     {
         return $this->attachmentService;
     }

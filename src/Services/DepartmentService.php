@@ -4,9 +4,10 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 
-class DepartmentService
+class DepartmentService implements DepartmentRepository
 {
     public function create(array $data): Department
     {

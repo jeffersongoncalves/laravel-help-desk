@@ -4,12 +4,13 @@ namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use JeffersonGoncalves\HelpDesk\Contracts\CommentRepository;
 use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Models\TicketComment;
 
-class CommentService
+class CommentService implements CommentRepository
 {
     public function __construct(
         protected AttachmentService $attachmentService,

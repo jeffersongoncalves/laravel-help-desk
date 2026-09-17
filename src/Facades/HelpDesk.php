@@ -17,10 +17,10 @@ use JeffersonGoncalves\HelpDesk\HelpDeskManager;
  * @method static \JeffersonGoncalves\HelpDesk\Models\TicketComment addComment(\JeffersonGoncalves\HelpDesk\Models\Ticket $ticket, \Illuminate\Database\Eloquent\Model $author, string $body, array $options = [])
  * @method static \JeffersonGoncalves\HelpDesk\Models\TicketComment addNote(\JeffersonGoncalves\HelpDesk\Models\Ticket $ticket, \Illuminate\Database\Eloquent\Model $author, string $body, array $options = [])
  * @method static \JeffersonGoncalves\HelpDesk\Models\Department createDepartment(array $data)
- * @method static \JeffersonGoncalves\HelpDesk\Services\TicketService tickets()
- * @method static \JeffersonGoncalves\HelpDesk\Services\CommentService comments()
- * @method static \JeffersonGoncalves\HelpDesk\Services\DepartmentService departments()
- * @method static \JeffersonGoncalves\HelpDesk\Services\AttachmentService attachments()
+ * @method static \JeffersonGoncalves\HelpDesk\Contracts\TicketRepository tickets()
+ * @method static \JeffersonGoncalves\HelpDesk\Contracts\CommentRepository comments()
+ * @method static \JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository departments()
+ * @method static \JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository attachments()
  *
  * @see HelpDeskManager
  */
