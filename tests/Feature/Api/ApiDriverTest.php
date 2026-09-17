@@ -154,8 +154,10 @@ it('refuses an operator action without making a request', function () {
 
     $ticket = new ApiTicket;
 
-    expect(fn () => HelpDesk::closeTicket($ticket))
-        ->toThrow(HelpDeskApiException::class, 'closeTicket() is an operator action');
+    // Closing and reopening are the requester's own; the other four statuses
+    // are not, and are refused before a request is made.
+    expect(fn () => HelpDesk::changeStatus($ticket, TicketStatus::Resolved, actorUser()))
+        ->toThrow(HelpDeskApiException::class, 'Changing a ticket to resolved is an operator action');
 
     expect(fn () => HelpDesk::assignTicket($ticket, actorUser()))
         ->toThrow(HelpDeskApiException::class);

@@ -97,9 +97,26 @@ class ApiTicketRepository implements TicketRepository
         throw HelpDeskApiException::operatorOnly('updateTicket()');
     }
 
+    /**
+     * Two of the six statuses are the requester's own. The rest carry operator
+     * and SLA meaning and have no endpoint, so they are refused here rather
+     * than sent and rejected.
+     *
+     * This is the honest line: not "status changes are operator-only", but
+     * "these two are yours, the others are ours".
+     */
     public function changeStatus(Ticket $ticket, TicketStatus $newStatus, ?Model $performer = null): Ticket
     {
-        throw HelpDeskApiException::operatorOnly('changeStatus()');
+        if (! in_array($newStatus, [TicketStatus::Closed, TicketStatus::Open], true)) {
+            throw HelpDeskApiException::operatorOnly('Changing a ticket to '.$newStatus->value);
+        }
+
+        $payload = $this->client->post("tickets/{$ticket->uuid}/status", [
+            'actor' => $this->actorPayload($performer),
+            'status' => $newStatus->value,
+        ]);
+
+        return $this->hydrateTicket($payload['data']);
     }
 
     public function assign(Ticket $ticket, Model $operator, ?Model $assignedBy = null): Ticket
@@ -114,12 +131,12 @@ class ApiTicketRepository implements TicketRepository
 
     public function close(Ticket $ticket, ?Model $performer = null): Ticket
     {
-        throw HelpDeskApiException::operatorOnly('closeTicket()');
+        return $this->changeStatus($ticket, TicketStatus::Closed, $performer);
     }
 
     public function reopen(Ticket $ticket, ?Model $performer = null): Ticket
     {
-        throw HelpDeskApiException::operatorOnly('reopenTicket()');
+        return $this->changeStatus($ticket, TicketStatus::Open, $performer);
     }
 
     public function delete(Ticket $ticket, ?Model $performer = null): bool
