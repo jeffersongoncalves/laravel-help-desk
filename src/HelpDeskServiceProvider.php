@@ -133,6 +133,25 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         if (config('help-desk.register_default_listeners', true)) {
             $this->registerEventListeners();
         }
+
+        $this->registerApiRoutes();
+    }
+
+    /**
+     * Only when at least one client is configured.
+     *
+     * A single application installation has no satellites to serve, so it gets
+     * no endpoints — the surface that does not exist cannot be probed.
+     */
+    protected function registerApiRoutes(): void
+    {
+        $clients = config('help-desk.api.clients', []);
+
+        if (! is_array($clients) || $clients === []) {
+            return;
+        }
+
+        $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
     }
 
     protected function registerEventListeners(): void
