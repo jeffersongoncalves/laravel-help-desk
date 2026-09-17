@@ -6,6 +6,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use JeffersonGoncalves\HelpDesk\Exceptions\HelpDeskApiException;
+use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
 use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
 
 /**
@@ -80,6 +81,9 @@ class HelpDeskClient
         throw match ($response->status()) {
             401 => HelpDeskApiException::unauthorized(),
             404 => TicketNotFoundException::withUuid('(not found)'),
+            // The move was refused by the transition table, which is what the
+            // contract promises for a status change on either driver.
+            409 => new InvalidStatusTransitionException((string) ($response->json('message') ?? 'This status change is not allowed.')),
             422 => HelpDeskApiException::invalid((array) ($response->json('errors') ?? [])),
             default => HelpDeskApiException::failed($response->status(), $response->body()),
         };

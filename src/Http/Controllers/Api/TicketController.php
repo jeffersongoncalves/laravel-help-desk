@@ -5,8 +5,10 @@ namespace JeffersonGoncalves\HelpDesk\Http\Controllers\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
 use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
 use JeffersonGoncalves\HelpDesk\Http\Requests\Api\StoreTicketRequest;
+use JeffersonGoncalves\HelpDesk\Http\Requests\Api\UpdateTicketStatusRequest;
 use JeffersonGoncalves\HelpDesk\Http\Resources\TicketResource;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -41,6 +43,35 @@ class TicketController
         );
 
         return TicketResource::make($ticket)->response()->setStatusCode(201);
+    }
+
+    /**
+     * Closing and reopening, the two status changes that belong to the person
+     * who opened the ticket.
+     *
+     * Routed through the service rather than writing the column, so the
+     * transition table still applies — including `help-desk.ticket.allow_reopen`,
+     * which it reads.
+     */
+    public function status(UpdateTicketStatusRequest $request, string $uuid): JsonResponse
+    {
+        $ticket = $this->scoped($request)->where('uuid', $uuid)->first();
+
+        if (! $ticket instanceof Ticket) {
+            throw new NotFoundHttpException;
+        }
+
+        try {
+            $ticket = HelpDesk::changeStatus($ticket, $request->status(), $request->actor());
+        } catch (InvalidStatusTransitionException $e) {
+            // 409, not 422: the request is well formed and the caller is
+            // allowed to make it. The ticket is simply not in a state the move
+            // is legal from, which is a different thing to tell them — and
+            // what lets the client raise the documented exception.
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
+
+        return TicketResource::make($ticket)->response();
     }
 
     public function show(Request $request, string $uuid): TicketResource

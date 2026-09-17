@@ -25,6 +25,10 @@ Route::prefix(config('help-desk.api.prefix', 'help-desk/api'))
         Route::post('tickets', [TicketController::class, 'store'])->name('help-desk.api.tickets.store');
         Route::get('tickets/{uuid}', [TicketController::class, 'show'])->name('help-desk.api.tickets.show');
 
+        // Closing and reopening only. Every other status is an operator
+        // decision and has no endpoint.
+        Route::post('tickets/{uuid}/status', [TicketController::class, 'status'])->name('help-desk.api.tickets.status');
+
         Route::post('tickets/{uuid}/comments', [CommentController::class, 'store'])->name('help-desk.api.comments.store');
 
         Route::post('tickets/{uuid}/attachments', [AttachmentController::class, 'store'])->name('help-desk.api.attachments.store');

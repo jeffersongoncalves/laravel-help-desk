@@ -66,9 +66,7 @@ it('throws for every operator action the documentation lists', function (string 
 
     $actions = [
         'updateTicket' => fn () => HelpDesk::updateTicket($ticket, ['title' => 'x']),
-        'changeStatus' => fn () => HelpDesk::changeStatus($ticket, TicketStatus::Closed),
-        'closeTicket' => fn () => HelpDesk::closeTicket($ticket),
-        'reopenTicket' => fn () => HelpDesk::reopenTicket($ticket),
+        'changeStatus' => fn () => HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user),
         'assignTicket' => fn () => HelpDesk::assignTicket($ticket, $user),
         'unassignTicket' => fn () => HelpDesk::unassignTicket($ticket),
         'deleteTicket' => fn () => HelpDesk::deleteTicket($ticket),
@@ -81,10 +79,26 @@ it('throws for every operator action the documentation lists', function (string 
 
     expect($actions[$call])->toThrow(HelpDeskApiException::class);
 })->with([
-    'updateTicket', 'changeStatus', 'closeTicket', 'reopenTicket', 'assignTicket',
+    'updateTicket', 'changeStatus', 'assignTicket',
     'unassignTicket', 'deleteTicket', 'addNote', 'addWatcher', 'removeWatcher',
     'createDepartment', 'deleteAttachment',
 ]);
+
+it('closes and reopens, which the documentation says a requester may do', function (string $call) {
+    Http::fake(['*' => Http::response(documentedResponse(), 200)]);
+
+    $ticket = new ApiTicket;
+    $ticket->forceFill(['uuid' => '550e8400-e29b-41d4-a716-446655440000']);
+
+    $user = documentedUser();
+
+    $actions = [
+        'closeTicket' => fn () => HelpDesk::closeTicket($ticket, $user),
+        'reopenTicket' => fn () => HelpDesk::reopenTicket($ticket, $user),
+    ];
+
+    expect($actions[$call])->not->toThrow(HelpDeskApiException::class);
+})->with(['closeTicket', 'reopenTicket']);
 
 it('keeps the validation helpers working, as the guidelines say', function () {
     // They read configuration, not the database, so a satellite can still

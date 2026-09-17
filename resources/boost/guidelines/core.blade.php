@@ -40,8 +40,11 @@ On the `api` driver:
   Eloquent call hit tables that do not exist
 - Models that come back are hydrated, not persisted. Reading a relation the response did
   not carry throws `HelpDeskApiException`, naming the API call to use instead
-- Operator actions throw: updating, status changes, assignment, deletion, internal notes,
-  watchers and managing departments
+- `closeTicket()` and `reopenTicket()` work — those two statuses belong to the requester.
+  Every other status throws: pass `TicketStatus::Closed` or `TicketStatus::Open` to
+  `changeStatus()`, nothing else
+- Operator actions throw: updating, assignment, deletion, internal notes, watchers and
+  managing departments
 - Attachments upload fine, but the satellite has no disk: `getUrl()` throws, and
   `HelpDesk::attachments()->contents($attachment, $uuid)` fetches the bytes. A file is sent
   inline and capped by `help-desk.api.max_inline_attachment`

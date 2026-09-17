@@ -360,19 +360,42 @@ The ticket uuid on `contents()` is not redundant: it is what the API path needs,
 transports check it against the attachment, so a mismatched pair fails the same way
 instead of serving a file from another ticket.
 
-#### What the API driver cannot do
+#### Closing and reopening
 
-Operator actions throw immediately, naming what to use instead, rather than making a
-request that would be refused:
+The two status changes that belong to the person who opened the ticket work over the API:
 
 ```php
-HelpDesk::closeTicket($ticket);
-// HelpDeskApiException: closeTicket() is an operator action and the API driver
+HelpDesk::closeTicket($ticket, $user);
+HelpDesk::reopenTicket($ticket, $user);
+```
+
+Every other status is an operator decision and has no endpoint, so the driver refuses it
+locally rather than sending a request the central application would reject:
+
+```php
+HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user);
+// HelpDeskApiException: Changing a ticket to resolved is an operator action and
+// the API driver cannot perform it.
+```
+
+The allow-list is enforced on the central application as well, not only in the client — a
+satellite is not a trust boundary. The transition table still applies to both moves,
+including `help-desk.ticket.allow_reopen`, so a refused move raises
+`InvalidStatusTransitionException` on either driver.
+
+#### What the API driver cannot do
+
+The rest of the operator surface throws immediately, naming what to use instead, rather
+than making a request that would be refused:
+
+```php
+HelpDesk::assignTicket($ticket, $operator);
+// HelpDeskApiException: assignTicket() is an operator action and the API driver
 // cannot perform it. It belongs to the central application, on the database driver.
 ```
 
-That covers updating, status changes, assignment, deletion, internal notes, watchers, and
-managing departments.
+That covers updating, the four operator statuses, assignment, deletion, internal notes,
+watchers, and managing departments.
 
 #### Attachments
 
@@ -458,6 +481,7 @@ Every rejection is the same `401` with the same body, whatever the reason.
 | `POST` | `/help-desk/api/tickets` |
 | `GET` | `/help-desk/api/tickets` |
 | `GET` | `/help-desk/api/tickets/{uuid}` |
+| `POST` | `/help-desk/api/tickets/{uuid}/status` |
 | `POST` | `/help-desk/api/tickets/{uuid}/comments` |
 | `GET` | `/help-desk/api/departments` |
 | `GET` | `/help-desk/api/departments/{id}/categories` |
