@@ -3,6 +3,8 @@
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
 use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
 use JeffersonGoncalves\HelpDesk\Models\Category;
@@ -72,6 +74,62 @@ it('paginates rather than returning everything', function () {
         ->and($first->count())->toBe(3)
         ->and($first->lastPage())->toBe(3)
         ->and($third->count())->toBe(1);
+});
+
+it('narrows the list by status and priority, without leaving the actor scope', function () {
+    $ada = contractUser();
+    $grace = contractUser('Grace Hopper');
+
+    $mine = contractTicket($ada);
+    $mine->update(['status' => TicketStatus::InProgress, 'priority' => TicketPriority::Urgent]);
+
+    contractTicket($ada)->update(['status' => TicketStatus::Closed]);
+
+    // Same status and priority, another actor. The filter must not reach it.
+    $theirs = contractTicket($grace);
+    $theirs->update(['status' => TicketStatus::InProgress, 'priority' => TicketPriority::Urgent]);
+
+    $tickets = HelpDesk::tickets()->forActor($ada, status: 'in_progress', priority: TicketPriority::Urgent);
+
+    expect($tickets->total())->toBe(1)
+        ->and($tickets->items()[0]->id)->toBe($mine->id);
+});
+
+it('searches the title and the reference number', function () {
+    $ada = contractUser();
+
+    $scanner = contractTicket($ada, 'Scanner jams on page two');
+    contractTicket($ada, 'Printer offline');
+
+    expect(HelpDesk::tickets()->forActor($ada, search: 'SCANNER')->total())->toBe(1)
+        ->and(HelpDesk::tickets()->forActor($ada, search: $scanner->reference_number)->items()[0]->id)->toBe($scanner->id)
+        // A wildcard is the character the user typed, not "match everything".
+        ->and(HelpDesk::tickets()->forActor($ada, search: '%')->total())->toBe(0);
+});
+
+it('sorts by priority in severity order rather than by the stored string', function () {
+    $ada = contractUser();
+
+    contractTicket($ada, 'Low')->update(['priority' => TicketPriority::Low]);
+    contractTicket($ada, 'Urgent')->update(['priority' => TicketPriority::Urgent]);
+    contractTicket($ada, 'Medium')->update(['priority' => TicketPriority::Medium]);
+
+    $tickets = HelpDesk::tickets()->forActor($ada, sort: 'priority', direction: 'desc');
+
+    expect($tickets->pluck('title')->all())->toBe(['Urgent', 'Medium', 'Low']);
+});
+
+it('throws rather than ignoring a sort column, direction or status it does not know', function () {
+    $ada = contractUser();
+
+    // Silently falling back to the default order would hand back a list that
+    // looks sorted, which is the failure this allow-list exists to avoid.
+    expect(fn () => HelpDesk::tickets()->forActor($ada, sort: 'user_id'))
+        ->toThrow(InvalidArgumentException::class, 'Tickets cannot be sorted by [user_id].')
+        ->and(fn () => HelpDesk::tickets()->forActor($ada, sort: 'created_at', direction: 'sideways'))
+        ->toThrow(InvalidArgumentException::class)
+        ->and(fn () => HelpDesk::tickets()->forActor($ada, status: 'nonsense'))
+        ->toThrow(InvalidArgumentException::class, 'Unknown ticket status [nonsense].');
 });
 
 it('offers only active departments, in sort order', function () {

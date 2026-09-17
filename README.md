@@ -345,6 +345,14 @@ under both drivers and nothing has to branch on which one is configured:
 $tickets = HelpDesk::tickets()->forActor($user);
 $tickets = HelpDesk::tickets()->forActor($user, perPage: 15, page: 2);
 
+// Filtered, searched and sorted by the database — on both drivers.
+$tickets = HelpDesk::tickets()->forActor($user,
+    status: [TicketStatus::Open, 'in_progress'],   // strings or enums
+    priority: TicketPriority::Urgent,
+    search: 'scanner',                             // title and reference number
+    sort: 'priority', direction: 'desc',           // one of Ticket::SORTABLE
+);
+
 // The options a create form offers: active only, in sort order.
 HelpDesk::departments()->all();
 HelpDesk::departments()->categoriesFor($department->id);
@@ -355,6 +363,27 @@ HelpDesk::attachments()->contents($attachment, $ticket->uuid);
 
 `forActor()` takes the user rather than falling back to whoever is authenticated. Which
 tickets someone may see is not a decision to make by omission.
+
+The filters are on the contract rather than left to the caller because the API driver
+cannot do them in memory: narrowing the page it happens to hold and presenting that as
+"your open tickets" looks filtered and is wrong. They are applied after the actor scope,
+so they only ever narrow what is asked for.
+
+A few details worth knowing:
+
+- `status` and `priority` take a value, an enum case, or a list of either. An unknown one
+  throws rather than matching nothing — an empty list from a typo looks exactly like an
+  empty list from having no tickets.
+- `search` covers `title` and `reference_number`, case-insensitively. Not the description:
+  it is rich text, and matching the markup produces hits the user cannot see in the row.
+  `%` and `_` in the term are the characters the user typed, not wildcards.
+- `sort` is an allow-list — `Ticket::SORTABLE` — checked on the client *and* again on the
+  central application, because a caller-supplied column reaches the query builder. Sorting
+  by `priority` or `status` orders by the enum's own sequence (severity, lifecycle), not by
+  the stored string, which would put `high` above `low` and call it sorted.
+
+Over the API these are query parameters on `GET tickets`: `status[]`, `priority[]`, `q`,
+`sort` and `direction`. Anything the allow-lists do not name is a 422.
 
 The ticket uuid on `contents()` is not redundant: it is what the API path needs, and both
 transports check it against the attachment, so a mismatched pair fails the same way

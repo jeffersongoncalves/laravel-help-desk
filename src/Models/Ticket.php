@@ -12,9 +12,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use JeffersonGoncalves\HelpDesk\Concerns\ResolvesMorphedIdentity;
 use JeffersonGoncalves\HelpDesk\Concerns\UsesHelpDeskConnection;
 use JeffersonGoncalves\HelpDesk\Database\Factories\TicketFactory;
@@ -60,6 +62,13 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 class Ticket extends Model
 {
     use HasFactory, ResolvesMorphedIdentity, SoftDeletes, UsesHelpDeskConnection;
+
+    /**
+     * The columns a list may be sorted by. See assertSortable().
+     *
+     * @var list<string>
+     */
+    public const SORTABLE = ['created_at', 'last_replied_at', 'priority', 'status'];
 
     protected $table = 'help_desk_tickets';
 
@@ -277,6 +286,151 @@ class Ticket extends Model
     public function scopeByPriority(Builder $query, TicketPriority $priority): Builder
     {
         return $query->where('priority', $priority);
+    }
+
+    /**
+     * The statuses a list is narrowed to, as strings, enums or a mix of both.
+     *
+     * An unknown value throws rather than quietly matching nothing: a list
+     * that came back empty because of a typo looks exactly like a list that
+     * came back empty because there is nothing to show.
+     *
+     * @param  array<int, TicketStatus|string>|TicketStatus|string|null  $status
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeStatusIn(Builder $query, array|TicketStatus|string|null $status): Builder
+    {
+        $values = self::statusValues($status);
+
+        return $values === [] ? $query : $query->whereIn('status', $values);
+    }
+
+    /**
+     * @param  array<int, TicketPriority|string>|TicketPriority|string|null  $priority
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopePriorityIn(Builder $query, array|TicketPriority|string|null $priority): Builder
+    {
+        $values = self::priorityValues($priority);
+
+        return $values === [] ? $query : $query->whereIn('priority', $values);
+    }
+
+    /**
+     * Title and reference number only.
+     *
+     * Not the description: it arrives as rich text, and matching the markup
+     * would produce hits the user cannot see anywhere in the row.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        if (! filled($term)) {
+            return $query;
+        }
+
+        // `!` rather than the usual backslash: the escape character has to be
+        // written into the SQL, and a backslash literal is spelled differently
+        // on MySQL than on SQLite and Postgres. LOWER() because LIKE is
+        // case-sensitive on Postgres and a search box that is not on one
+        // database and is on another is worse than either.
+        $term = '%'.mb_strtolower(str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $term)).'%';
+
+        return $query->where(fn (Builder $query) => $query
+            ->whereRaw("LOWER(title) LIKE ? ESCAPE '!'", [$term])
+            ->orWhereRaw("LOWER(reference_number) LIKE ? ESCAPE '!'", [$term]));
+    }
+
+    /**
+     * Newest first unless told otherwise, so the default list is unchanged.
+     *
+     * `priority` and `status` are stored as their string values, so ordering
+     * by the column alphabetically would put `high` above `low` and call it
+     * sorted. Both are ordered by the enum's own sequence instead — severity
+     * for priority, lifecycle for status.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeSorted(Builder $query, ?string $sort = null, string $direction = 'desc'): Builder
+    {
+        self::assertSortable($sort, $direction);
+
+        if ($sort === null) {
+            return $query->latest();
+        }
+
+        return match ($sort) {
+            'priority' => $query->orderByRaw(self::enumOrder('priority', TicketPriority::cases()).' '.$direction),
+            'status' => $query->orderByRaw(self::enumOrder('status', TicketStatus::cases()).' '.$direction),
+            default => $query->orderBy($sort, $direction),
+        };
+    }
+
+    /**
+     * A caller-supplied column reaches the query builder, so this is an
+     * allow-list on principle, not because of what is in the table today.
+     *
+     * Shared with the API driver, which checks before spending a round trip on
+     * a sort the central application would refuse anyway.
+     */
+    public static function assertSortable(?string $sort, string $direction = 'desc'): void
+    {
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            throw new InvalidArgumentException("Sort direction [{$direction}] is not asc or desc.");
+        }
+
+        if ($sort !== null && ! in_array($sort, self::SORTABLE, true)) {
+            throw new InvalidArgumentException(
+                "Tickets cannot be sorted by [{$sort}]. Sortable: ".implode(', ', self::SORTABLE).'.'
+            );
+        }
+    }
+
+    /**
+     * @param  array<int, TicketStatus|string>|TicketStatus|string|null  $status
+     * @return list<string>
+     */
+    public static function statusValues(array|TicketStatus|string|null $status): array
+    {
+        return array_values(array_map(
+            fn (TicketStatus|string $value): string => $value instanceof TicketStatus
+                ? $value->value
+                : (TicketStatus::tryFrom($value) ?? throw new InvalidArgumentException("Unknown ticket status [{$value}]."))->value,
+            Arr::wrap($status),
+        ));
+    }
+
+    /**
+     * @param  array<int, TicketPriority|string>|TicketPriority|string|null  $priority
+     * @return list<string>
+     */
+    public static function priorityValues(array|TicketPriority|string|null $priority): array
+    {
+        return array_values(array_map(
+            fn (TicketPriority|string $value): string => $value instanceof TicketPriority
+                ? $value->value
+                : (TicketPriority::tryFrom($value) ?? throw new InvalidArgumentException("Unknown ticket priority [{$value}]."))->value,
+            Arr::wrap($priority),
+        ));
+    }
+
+    /**
+     * @param  array<int, TicketPriority|TicketStatus>  $cases
+     */
+    protected static function enumOrder(string $column, array $cases): string
+    {
+        $whens = '';
+
+        foreach ($cases as $index => $case) {
+            $whens .= " WHEN '{$case->value}' THEN {$index}";
+        }
+
+        return "CASE {$column}{$whens} END";
     }
 
     /** @param Builder<static> $query */

@@ -9,6 +9,7 @@ use JeffersonGoncalves\HelpDesk\Api\HelpDeskClient;
 use JeffersonGoncalves\HelpDesk\Api\HydratesModels;
 use JeffersonGoncalves\HelpDesk\Api\ResolvesActor;
 use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
+use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\HelpDeskApiException;
 use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
@@ -66,15 +67,38 @@ class ApiTicketRepository implements TicketRepository
      * satellite with more than a page of tickets was shown the first page and
      * told nothing, so the totals the response already carried are kept.
      *
+     * @param  array<int, TicketStatus|string>|TicketStatus|string|null  $status
+     * @param  array<int, TicketPriority|string>|TicketPriority|string|null  $priority
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function forActor(Model $user, int $perPage = 25, int $page = 1): LengthAwarePaginator
-    {
-        $payload = $this->client->get('tickets', [
+    public function forActor(
+        Model $user,
+        int $perPage = 25,
+        int $page = 1,
+        array|TicketStatus|string|null $status = null,
+        array|TicketPriority|string|null $priority = null,
+        ?string $search = null,
+        ?string $sort = null,
+        string $direction = 'desc',
+    ): LengthAwarePaginator {
+        // Normalised here, not just sent: an unknown status or sort column
+        // fails with the same exception the database driver raises, before a
+        // round trip. The central application validates again — a satellite is
+        // not a trust boundary.
+        Ticket::assertSortable($sort, $direction);
+
+        $query = array_filter([
             'actor' => $this->actorPayload($user),
             'per_page' => $perPage,
             'page' => $page,
-        ]);
+            'status' => Ticket::statusValues($status),
+            'priority' => Ticket::priorityValues($priority),
+            'q' => $search,
+            'sort' => $sort,
+            'direction' => $sort === null ? null : $direction,
+        ], fn ($value) => $value !== null && $value !== []);
+
+        $payload = $this->client->get('tickets', $query);
 
         $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
         $items = collect($payload['data'] ?? [])

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
+use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
 use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
@@ -160,18 +161,33 @@ class TicketService implements TicketRepository
     }
 
     /**
+     * @param  array<int, TicketStatus|string>|TicketStatus|string|null  $status
+     * @param  array<int, TicketPriority|string>|TicketPriority|string|null  $priority
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function forActor(Model $user, int $perPage = 25, int $page = 1): LengthAwarePaginator
-    {
+    public function forActor(
+        Model $user,
+        int $perPage = 25,
+        int $page = 1,
+        array|TicketStatus|string|null $status = null,
+        array|TicketPriority|string|null $priority = null,
+        ?string $search = null,
+        ?string $sort = null,
+        string $direction = 'desc',
+    ): LengthAwarePaginator {
         // Both conditions, always. The type alone would match another model
         // class's row with the same key; the key alone would match another
         // user entirely. This mirrors what the API scopes server-side, except
         // here nothing else enforces it.
+        //
+        // The filters go on after them, so none of them can widen the scope.
         return Ticket::query()
             ->where('user_type', $user->getMorphClass())
             ->where('user_id', $user->getKey())
-            ->latest()
+            ->statusIn($status)
+            ->priorityIn($priority)
+            ->search($search)
+            ->sorted($sort, $direction)
             ->paginate(perPage: $perPage, page: $page);
     }
 

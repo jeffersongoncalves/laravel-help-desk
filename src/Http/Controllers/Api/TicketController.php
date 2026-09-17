@@ -5,6 +5,9 @@ namespace JeffersonGoncalves\HelpDesk\Http\Controllers\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\Rule;
+use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
 use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
 use JeffersonGoncalves\HelpDesk\Http\Requests\Api\StoreTicketRequest;
@@ -17,8 +20,30 @@ class TicketController
 {
     use ScopesToCaller;
 
+    /**
+     * Every filter is optional and every one of them is applied to the scoped
+     * query, so none of them can widen what a satellite sees — they only
+     * narrow what it asks for.
+     *
+     * Validated here as well as on the client: a satellite is not a trust
+     * boundary, and `sort` in particular reaches the query builder.
+     */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $request->validate([
+            // A requester may filter by the statuses they can never set. They
+            // already see `in_progress` and `on_hold` on their own tickets, and
+            // a filter that silently drops them is a worse answer than one
+            // that returns none.
+            'status' => ['sometimes', 'array'],
+            'status.*' => [Rule::enum(TicketStatus::class)],
+            'priority' => ['sometimes', 'array'],
+            'priority.*' => [Rule::enum(TicketPriority::class)],
+            'q' => ['sometimes', 'string', 'max:255'],
+            'sort' => ['sometimes', Rule::in(Ticket::SORTABLE)],
+            'direction' => ['sometimes', Rule::in(['asc', 'desc'])],
+        ]);
+
         $tickets = $this->scoped($request)
             // Still inside the caller's scope, so a reference belonging to
             // someone else simply returns nothing.
@@ -26,7 +51,10 @@ class TicketController
                 $request->filled('reference_number'),
                 fn ($query) => $query->where('reference_number', $request->string('reference_number')),
             )
-            ->latest()
+            ->statusIn($request->input('status'))
+            ->priorityIn($request->input('priority'))
+            ->search($request->string('q')->toString())
+            ->sorted($request->input('sort'), (string) $request->input('direction', 'desc'))
             ->paginate((int) min($request->integer('per_page', 25), 100));
 
         return TicketResource::collection($tickets);
