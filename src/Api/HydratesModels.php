@@ -28,7 +28,8 @@ trait HydratesModels
     protected function hydrateTicket(array $payload): Ticket
     {
         $comments = $payload['comments'] ?? null;
-        unset($payload['comments']);
+        $attachments = $payload['attachments'] ?? null;
+        unset($payload['comments'], $payload['attachments']);
 
         /** @var ApiTicket $ticket */
         $ticket = $this->hydrate(new ApiTicket, $payload);
@@ -40,6 +41,30 @@ trait HydratesModels
             $ticket->setRelation('comments', collect($comments)->map(
                 fn (array $comment) => $this->hydrateComment($comment),
             ));
+        }
+
+        // Lifted out of the payload for the same reason comments are: left in,
+        // forceFill() writes an *attribute* named `attachments` holding arrays,
+        // getAttribute() finds it before GuardsRelations is ever consulted, and
+        // the caller gets array where the contract says Collection.
+        if (is_array($attachments)) {
+            $attachments = collect($attachments)->map(
+                fn (array $attachment) => $this->hydrateAttachment($attachment),
+            );
+
+            $ticket->setRelation('attachments', $attachments);
+
+            // The list is flat and carries comment_id, so the per-comment
+            // subsets come from it — TicketCommentResource does not nest them,
+            // and the data to fill them arrived in the same response.
+            if ($ticket->relationLoaded('comments')) {
+                $byComment = $attachments->groupBy('comment_id');
+
+                $ticket->getRelation('comments')->each(fn (ApiTicketComment $comment) => $comment->setRelation(
+                    'attachments',
+                    $byComment->get($comment->getKey(), collect()),
+                ));
+            }
         }
 
         return $ticket;
