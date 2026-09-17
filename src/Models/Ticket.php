@@ -400,7 +400,7 @@ class Ticket extends Model
         return array_values(array_map(
             fn (TicketStatus|string $value): string => $value instanceof TicketStatus
                 ? $value->value
-                : (TicketStatus::tryFrom($value)?->value ?? throw new InvalidArgumentException("Unknown ticket status [{$value}].")),
+                : (TicketStatus::tryFrom($value) ?? throw new InvalidArgumentException("Unknown ticket status [{$value}]."))->value,
             Arr::wrap($status),
         ));
     }
@@ -414,7 +414,7 @@ class Ticket extends Model
         return array_values(array_map(
             fn (TicketPriority|string $value): string => $value instanceof TicketPriority
                 ? $value->value
-                : (TicketPriority::tryFrom($value)?->value ?? throw new InvalidArgumentException("Unknown ticket priority [{$value}].")),
+                : (TicketPriority::tryFrom($value) ?? throw new InvalidArgumentException("Unknown ticket priority [{$value}]."))->value,
             Arr::wrap($priority),
         ));
     }
