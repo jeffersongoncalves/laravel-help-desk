@@ -10,6 +10,71 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.9.0 - 2026-09-16
+
+A user-facing list a satellite can actually narrow, and two bugs that made the API driver's hydrated models quietly wrong.
+
+Nothing here changes `driver=database` behaviour you were already relying on. No migration.
+
+### The list can be filtered, searched and sorted
+
+`GET tickets` took `reference_number`, `per_page` and `page`. Enough to list a user's tickets and resolve one by reference; not enough to answer "my open tickets" or "newest first by priority". On the database driver those are a `where` and an `orderBy`. On a satellite there was nowhere to put them, so a panel had to narrow the page it happened to hold and present that as a filtered list — which looks filtered and is wrong, with nothing on screen saying so.
+
+`forActor()` now takes them, on the contract, so the same call means the same thing on either transport:
+
+```php
+$tickets = HelpDesk::tickets()->forActor($user,
+    status: [TicketStatus::Open, 'in_progress'],   // strings or enums, one or many
+    priority: TicketPriority::Urgent,
+    search: 'scanner',                             // title and reference number
+    sort: 'priority', direction: 'desc',           // one of Ticket::SORTABLE
+);
+
+```
+Over the API they are query parameters on `GET tickets`: `status[]`, `priority[]`, `q`, `sort` and `direction`. Every one of them is applied *after* the actor scope, so a filter can only narrow what is asked for — never widen what a satellite may see.
+
+Four decisions in there are worth stating, because each is a place the obvious implementation is silently wrong:
+
+- **`priority` and `status` sort by the enum's own sequence**, not by the string in the column. Alphabetically `high` sorts above `low` and the list still looks sorted.
+- **`search` covers `title` and `reference_number`, case-insensitively.** Not the description: it arrives as rich text, and a match in the markup is a hit the user cannot see anywhere in the row. `%` and `_` in the term are the characters the user typed — unescaped, someone searching `90%` would be handed every ticket they own.
+- **`sort` is an allow-list**, checked by the client *and* again by the central application, because a caller-supplied column reaches the query builder. A satellite is not a trust boundary.
+- **An unknown status, priority, sort column or direction throws** rather than being ignored. A list that came back empty because of a typo looks exactly like one that came back empty because there is nothing to show.
+
+The work lives in four scopes on `Ticket` — `statusIn`, `priorityIn`, `search`, `sorted` — shared by both drivers, so the allow-list and the search shape are defined once rather than twice and drifting.
+
+### A hydrated ticket had no key
+
+`TicketResource` publishes `uuid` and deliberately never `id` — the central application's primary keys are no one else's business. But `ApiTicket` still inherited `$primaryKey = 'id'`, so `getKey()` answered `null` on every ticket that came back over the wire.
+
+Anything keying a collection by the model's key therefore collapsed the whole page into one entry. Filament's table does exactly that: a user with 25 tickets was shown 1. No exception, no log line — the same class of failure as v1.8.0's truncated list.
+
+`ApiTicket` and `ApiTicketAttachment` key on `uuid` now, which is what the endpoints key on and the only identifier their resources publish. `ApiTicketComment` is unchanged, because `TicketCommentResource` does publish `id`.
+
+### The show response's attachments were never models
+
+`hydrateTicket()` lifted `comments` out of the payload but not `attachments`, so `forceFill()` wrote an *attribute* named `attachments` holding an array of arrays. Reading `$ticket->attachments` found that attribute before `GuardsRelations` was ever consulted, and handed back `array` where the contract says `Collection<TicketAttachment>`. A blade doing `$attachment->file_name` failed with "attempt to read property on array" — precisely the unhelpful failure `GuardsRelations` exists to remove, reintroduced through the front door.
+
+Attachments are hydrated now, and because the response sends them as one flat list carrying `comment_id`, each comment gets its own subset too:
+
+```php
+$ticket = HelpDesk::tickets()->findByUuid($uuid);
+
+$ticket->attachments;                   // Collection<ApiTicketAttachment>
+$ticket->comments->first()->attachments; // its own, from the same response
+
+```
+The rule that made the trait worth having still holds: a response that did not carry attachments leaves the relation unset, so reading it throws something legible rather than returning a trustworthy-looking empty collection.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+
+```
+No migration, no configuration change. Applications implementing `TicketRepository` themselves need the five new optional parameters on `forActor()`; everything calling the facade is unaffected.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.8.0...v1.9.0
+
 ## v1.8.0 - 2026-09-16
 
 Two changes to what a satellite application can do over the signed API, and one bug fix in how it reads a list.
@@ -24,6 +89,7 @@ The two transports disagreed about what an end user may do, and nobody decided t
 HelpDesk::closeTicket($ticket, $user);
 HelpDesk::reopenTicket($ticket, $user);
 
+
 ```
 `POST /help-desk/api/tickets/{uuid}/status` takes an allow-list of exactly two values. `resolved`, `in_progress`, `pending` and `on_hold` carry operator and SLA meaning and stay unreachable from a satellite — and the allow-list is enforced by the central application, not only by the client, because a satellite is not a trust boundary.
 
@@ -35,6 +101,7 @@ Everything else still throws:
 HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user);
 // HelpDeskApiException: Changing a ticket to resolved is an operator action and
 // the API driver cannot perform it.
+
 
 ```
 The line is not "status changes are operator-only". It is "these two are yours, the rest are ours".
@@ -51,6 +118,7 @@ HelpDesk::departments()->all();
 HelpDesk::departments()->categoriesFor($department->id);
 
 HelpDesk::attachments()->contents($attachment, $ticket->uuid);
+
 
 ```
 `forActor()` takes the user rather than falling back to whoever is authenticated. Which tickets someone may see is not a decision to make by omission.
@@ -69,6 +137,7 @@ Undocumented and unconsumed in v1.7.0, so nothing in the wild hit it — but it 
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 ```
 No migration, no configuration change. Applications implementing the package's repository contracts themselves need the four new methods; everything calling the facade is unaffected.
@@ -97,6 +166,7 @@ HELPDESK_APP_KEY=app-a
 HELPDESK_API_SECRET=a-long-random-string
 
 
+
 ```
 Calling code does not change. The facade is the same and what comes back is still a `Ticket`, with its accessors, enum casts and `is*()` helpers intact.
 
@@ -106,6 +176,7 @@ $ticket = HelpDesk::createTicket([...], $user);
 $ticket->reference_number;  // 'HD-00042'
 $ticket->isOpen();          // true
 $ticket->requester_name;    // 'Ada Lovelace'
+
 
 
 ```
@@ -118,6 +189,7 @@ So a leaked secret can impersonate any user *of that application*, and none of a
 ```
 canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
 signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+
 
 
 ```
@@ -151,6 +223,7 @@ Extension and size limits are enforced on both ends — the satellite to avoid a
 composer update jeffersongoncalves/laravel-help-desk
 
 
+
 ```
 No migration. No configuration change unless you want the new transport.
 
@@ -170,6 +243,7 @@ Worse than incomplete: it told an agent to read the polymorphic relations direct
 $ticket->user        // fatal, not null, when applications share a database
 $comment->author
 $attachment->uploadedBy
+
 
 
 
@@ -220,6 +294,7 @@ $row->resolvedWatcher();
 
 
 
+
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
 
@@ -251,6 +326,7 @@ php artisan migrate
 
 
 
+
 ```
 One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
 
@@ -275,6 +351,7 @@ $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -290,6 +367,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
