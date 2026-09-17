@@ -444,8 +444,13 @@ $ticket->comments;
 // The show endpoint returns them: use HelpDesk::tickets()->findByUuid($uuid).
 ```
 
-A relation the response *did* carry — the comments on a ticket fetched by uuid — is
-returned as normal.
+A relation the response *did* carry — the comments and attachments on a ticket fetched by
+uuid — is returned as normal. The show endpoint sends attachments as one flat list, so
+`$ticket->attachments` holds all of them and each comment carries its own subset.
+
+Hydrated tickets and attachments are keyed by `uuid`, not `id`: the resources publish the
+uuid and never the central application's primary key, so `$ticket->getKey()` returns the
+uuid. It matters for anything that keys a collection by the model's key.
 
 #### The signature scheme
 

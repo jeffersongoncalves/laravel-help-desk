@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use JeffersonGoncalves\HelpDesk\Api\HelpDeskSignature;
 use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
+use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicketAttachment;
 use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiTicketRepository;
 use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
@@ -139,6 +140,82 @@ it('returns a relation the response did fill', function () {
     expect($ticket->comments)->toHaveCount(1)
         ->and($ticket->comments->first()->body)->toBe('Any news?')
         ->and($ticket->comments->first()->author_name)->toBe('Ada Lovelace');
+});
+
+it('keys a hydrated ticket by its uuid', function () {
+    // Nothing else catches this: a null key is only visible once a caller
+    // keys a collection by it, and then it silently loses rows.
+    Http::fake(['*' => Http::response([
+        'data' => [
+            ticketPayload()['data'],
+            ticketPayload(['uuid' => '6ba7b810-9dad-11d1-80b4-00c04fd430c8'])['data'],
+        ],
+    ], 200)]);
+
+    $tickets = app(TicketRepository::class)->forActor(actorUser())->getCollection();
+
+    expect($tickets->first()->getKey())->toBe('550e8400-e29b-41d4-a716-446655440000')
+        ->and($tickets->last()->getKey())->toBe('6ba7b810-9dad-11d1-80b4-00c04fd430c8')
+        ->and($tickets->keyBy->getKey())->toHaveCount(2);
+});
+
+it('hydrates the attachments the show response carried', function () {
+    Http::fake(['*' => Http::response(ticketPayload([
+        'comments' => [[
+            'id' => 7,
+            'body' => 'Here is the log.',
+            'type' => 'reply',
+            'author_name' => 'Ada Lovelace',
+            'created_at' => '2026-09-17T00:00:00+00:00',
+        ]],
+        'attachments' => [
+            [
+                'uuid' => 'aaaaaaaa-0000-0000-0000-000000000001',
+                'comment_id' => 7,
+                'file_name' => 'printer.log',
+                'mime_type' => 'text/plain',
+                'file_size' => 120,
+                'uploader_name' => 'Ada Lovelace',
+                'created_at' => '2026-09-17T00:00:00+00:00',
+            ],
+            [
+                'uuid' => 'aaaaaaaa-0000-0000-0000-000000000002',
+                'comment_id' => null,
+                'file_name' => 'photo.png',
+                'mime_type' => 'image/png',
+                'file_size' => 2048,
+                'uploader_name' => 'Ada Lovelace',
+                'created_at' => '2026-09-17T00:00:00+00:00',
+            ],
+        ],
+    ]), 200)]);
+
+    test()->actingAs(actorUser());
+
+    $ticket = app(TicketRepository::class)->findByUuid('550e8400-e29b-41d4-a716-446655440000');
+
+    expect($ticket->attachments)->toHaveCount(2)
+        ->and($ticket->attachments->first())->toBeInstanceOf(ApiTicketAttachment::class)
+        // The failure this replaces: an array, so reading a property on it
+        // threw "attempt to read property on array" in the consumer's blade.
+        ->and($ticket->attachments->first()->file_name)->toBe('printer.log')
+        ->and($ticket->attachments->first()->getKey())->toBe('aaaaaaaa-0000-0000-0000-000000000001')
+        // The flat list carries comment_id, so the comment's own subset comes
+        // from it — TicketCommentResource does not nest them.
+        ->and($ticket->comments->first()->attachments)->toHaveCount(1)
+        ->and($ticket->comments->first()->attachments->first()->file_name)->toBe('printer.log');
+});
+
+it('leaves attachments unset when the response did not carry them', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    $ticket = HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    expect(fn () => $ticket->attachments)
+        ->toThrow(
+            HelpDeskApiException::class,
+            'Relation [attachments] on ApiTicket needs the database driver.',
+        );
 });
 
 it('refuses to save a hydrated model', function () {

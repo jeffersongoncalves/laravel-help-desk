@@ -16,6 +16,20 @@ class ApiTicket extends Ticket
     use GuardsRelations;
 
     /**
+     * TicketResource publishes `uuid` and deliberately never `id`, so the
+     * inherited `id` key is always null here. A caller keying a collection by
+     * the model's key — which Filament's table does — would collapse a whole
+     * page into a single row, with no exception and no log line. `uuid` is
+     * what the endpoints key on and the only identifier the resource sends,
+     * so it is the honest key on this transport.
+     */
+    protected $primaryKey = 'uuid';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
+    /**
      * @return array<string, string>
      */
     protected function apiAlternatives(): array

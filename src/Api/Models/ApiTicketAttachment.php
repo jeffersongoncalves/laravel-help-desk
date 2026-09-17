@@ -10,6 +10,16 @@ class ApiTicketAttachment extends TicketAttachment
     use GuardsRelations;
 
     /**
+     * Same shape as ApiTicket: TicketAttachmentResource publishes `uuid` and
+     * no `id`, so `uuid` is the only key this model can honestly answer with.
+     */
+    protected $primaryKey = 'uuid';
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
+
+    /**
      * @return array<string, string>
      */
     protected function apiAlternatives(): array
