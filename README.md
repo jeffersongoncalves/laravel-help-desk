@@ -103,6 +103,25 @@ return [
 ];
 ```
 
+### Transports
+
+A satellite application reaches the help desk one of two ways, and the choice comes first
+because everything else follows from it.
+
+| | `database` | `api` |
+|---|---|---|
+| How | shares the central database connection | signed HTTP to the central application |
+| Needs | credentials for the support database | a shared secret |
+| Suits | applications you run, on one network | a satellite that should hold no database credentials |
+| Can do | everything | the end-user side only |
+
+```env
+HELPDESK_DRIVER=database   # the default
+```
+
+The sections below cover the shared connection. [Talking Over the Signed API](#talking-over-the-signed-api)
+covers the other.
+
 ### Dedicated Database Connection
 
 Set `help-desk.connection` to route every help desk table, model and migration to a
@@ -251,6 +270,147 @@ public function toHelpDeskSnapshot(): array
     return ['name' => $this->full_name, 'email' => $this->contact_email];
 }
 ```
+
+### Talking Over the Signed API
+
+When a satellite should hold no credentials for the support database — it runs on another
+host, or on someone else's infrastructure — it reaches the central application over HTTP
+instead, authenticated with HMAC.
+
+Calling code does not change. The facade is the same, and what comes back is still a
+`Ticket`:
+
+```php
+$ticket = HelpDesk::createTicket([
+    'department_id' => $department->id,
+    'title' => 'Printer offline',
+    'description' => 'It stopped printing.',
+], $user);
+
+$ticket->reference_number;  // 'HD-00042'
+$ticket->isOpen();          // true
+$ticket->requester_name;    // 'Ada Lovelace'
+```
+
+#### On the satellite
+
+```env
+HELPDESK_DRIVER=api
+HELPDESK_API_URL=https://support.example.com
+HELPDESK_APP_KEY=app-a
+HELPDESK_API_SECRET=a-long-random-string
+```
+
+#### On the central application
+
+```php
+// config/help-desk.php
+'api' => [
+    'clients' => [
+        'app-a' => [
+            'secrets' => [
+                env('HELPDESK_SECRET_APP_A'),
+                env('HELPDESK_SECRET_APP_A_PREVIOUS'),
+            ],
+            'actor_types' => ['app-a-user'],
+        ],
+    ],
+],
+```
+
+Two secrets, current first, so one can be rotated without a flag day: deploy the new
+secret, roll the satellites, then drop the old entry. `actor_types` lists the morph aliases
+that application's users are stored under; claiming any other is rejected.
+
+**No clients configured means no API routes are registered at all**, so a single
+application installation exposes nothing.
+
+#### What the signature proves, and what it does not
+
+It proves **which application** is calling. The acting user is **asserted by** that
+application in the payload.
+
+So a leaked secret can impersonate any user *of that application*, and none of another —
+the app key comes from the signed header, never the body, and every read is scoped by it.
+HMAC gives authenticity and integrity, not confidentiality: **HTTPS is still required**.
+
+#### What the API driver cannot do
+
+Operator actions throw immediately, naming what to use instead, rather than making a
+request that would be refused:
+
+```php
+HelpDesk::closeTicket($ticket);
+// HelpDeskApiException: closeTicket() is an operator action and the API driver
+// cannot perform it. It belongs to the central application, on the database driver.
+```
+
+That covers updating, status changes, assignment, deletion, internal notes, watchers, and
+managing departments. Attachments are not implemented over the API yet.
+
+Relations are the other limit. A model that came back over the wire has no database to
+join against, so reading a relation the response did not carry throws rather than
+producing a missing-table SQL error:
+
+```php
+$ticket->comments;
+// HelpDeskApiException: Relation [comments] on ApiTicket needs the database driver.
+// The show endpoint returns them: use HelpDesk::tickets()->findByUuid($uuid).
+```
+
+A relation the response *did* carry — the comments on a ticket fetched by uuid — is
+returned as normal.
+
+#### The signature scheme
+
+Enough to write a client in another language.
+
+```
+canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
+signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+```
+
+`REQUEST_URI` is the path plus query string, exactly as the server sees it. The method and
+URI are in the string because signing the body alone would let a captured request be
+replayed against a different endpoint.
+
+| Header | Content |
+|---|---|
+| `X-HelpDesk-App` | the calling application's app key |
+| `X-HelpDesk-Timestamp` | Unix seconds |
+| `X-HelpDesk-Nonce` | 128 bits of randomness, 32 hex characters |
+| `X-HelpDesk-Signature` | `sha256=<hex>` |
+
+The server rejects a timestamp more than `help-desk.api.tolerance` seconds away in either
+direction, and rejects a nonce it has already seen. Both are required: a window alone
+leaves everything inside it replayable, and a nonce alone lets a capture be replayed
+forever.
+
+Every rejection is the same `401` with the same body, whatever the reason.
+
+#### Endpoints
+
+| Method | Path |
+|---|---|
+| `POST` | `/help-desk/api/tickets` |
+| `GET` | `/help-desk/api/tickets` |
+| `GET` | `/help-desk/api/tickets/{uuid}` |
+| `POST` | `/help-desk/api/tickets/{uuid}/comments` |
+| `GET` | `/help-desk/api/departments` |
+| `GET` | `/help-desk/api/departments/{id}/categories` |
+
+Every request acting on behalf of a person carries an actor:
+
+```json
+{
+  "actor": { "type": "app-a-user", "id": 5, "name": "Ada Lovelace", "email": "ada@example.com" },
+  "title": "Printer offline",
+  "description": "It stopped printing."
+}
+```
+
+The name and email become the identity snapshot, which is how the central application names
+a requester whose model it does not have.
 
 ## Setup
 
