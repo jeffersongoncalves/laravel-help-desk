@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 use JeffersonGoncalves\HelpDesk\Models\SlaPolicy;
@@ -143,4 +144,69 @@ it('rolls a due date created on a closed day forward to the next open day', func
 
     $nextMonday = $saturday->copy()->addDays(2)->setTime(9, 30);
     expect($ticket->sla_first_response_due_at)->toEqual($nextMonday);
+});
+
+it('records first_response_at on the first reply from someone other than the requester', function () {
+    $operator = TestUser::create(['name' => 'Agent Smith', 'email' => 'agent@example.com']);
+    $ticket = makeSlaTicket();
+
+    $comment = $ticket->comments()->create([
+        'author_type' => $operator->getMorphClass(),
+        'author_id' => $operator->id,
+        'body' => 'How can I help?',
+        'type' => CommentType::Reply,
+    ]);
+
+    $this->service->recordFirstResponse($ticket, $comment);
+
+    expect($ticket->first_response_at)->not->toBeNull();
+});
+
+it('does not overwrite first_response_at once already set', function () {
+    $operator = TestUser::create(['name' => 'Agent Smith', 'email' => 'agent@example.com']);
+    $ticket = makeSlaTicket(['first_response_at' => now()->subHour()]);
+    $original = $ticket->first_response_at;
+
+    $comment = $ticket->comments()->create([
+        'author_type' => $operator->getMorphClass(),
+        'author_id' => $operator->id,
+        'body' => 'Second reply',
+        'type' => CommentType::Reply,
+    ]);
+
+    $this->service->recordFirstResponse($ticket, $comment);
+
+    expect($ticket->first_response_at->equalTo($original))->toBeTrue();
+});
+
+it('does not record first_response_at for a reply from the requester', function () {
+    $ticket = makeSlaTicket();
+
+    $comment = $ticket->comments()->create([
+        'author_type' => $this->user->getMorphClass(),
+        'author_id' => $this->user->id,
+        'body' => 'Any update?',
+        'type' => CommentType::Reply,
+    ]);
+
+    $this->service->recordFirstResponse($ticket, $comment);
+
+    expect($ticket->first_response_at)->toBeNull();
+});
+
+it('does not record first_response_at for an internal note', function () {
+    $operator = TestUser::create(['name' => 'Agent Smith', 'email' => 'agent@example.com']);
+    $ticket = makeSlaTicket();
+
+    $comment = $ticket->comments()->create([
+        'author_type' => $operator->getMorphClass(),
+        'author_id' => $operator->id,
+        'body' => 'Internal note',
+        'type' => CommentType::Note,
+        'is_internal' => true,
+    ]);
+
+    $this->service->recordFirstResponse($ticket, $comment);
+
+    expect($ticket->first_response_at)->toBeNull();
 });

@@ -3,8 +3,10 @@
 namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 use JeffersonGoncalves\HelpDesk\Models\SlaPolicy;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Models\TicketComment;
 use RuntimeException;
 
 class SlaService
@@ -39,6 +41,28 @@ class SlaService
         $ticket->save();
 
         return $ticket;
+    }
+
+    /**
+     * Records the ticket's first response: the first public reply -- not an
+     * internal note -- from someone other than the ticket's own requester.
+     * A no-op once already set.
+     */
+    public function recordFirstResponse(Ticket $ticket, TicketComment $comment): void
+    {
+        if ($ticket->first_response_at !== null) {
+            return;
+        }
+
+        if ($comment->type !== CommentType::Reply) {
+            return;
+        }
+
+        if ($comment->author_type === $ticket->user_type && $comment->author_id === $ticket->user_id) {
+            return;
+        }
+
+        $ticket->update(['first_response_at' => now()]);
     }
 
     /**
