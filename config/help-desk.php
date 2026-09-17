@@ -83,14 +83,27 @@ return [
     */
 
     'api' => [
+        'prefix' => 'help-desk/api',
+
+        'middleware' => ['throttle:60,1'],
+
         'tolerance' => env('HELPDESK_API_TOLERANCE', 300),
 
+        /*
+        | Each client also declares the actor types it may act as — the morph
+        | aliases its users are stored under. An application that claims an
+        | actor type it did not register is rejected, so a satellite cannot
+        | open a ticket that appears to come from another one.
+        |
+        | No clients means no API routes are registered at all.
+        */
         'clients' => [
             // 'app-a' => [
             //     'secrets' => [
             //         env('HELPDESK_SECRET_APP_A'),
             //         env('HELPDESK_SECRET_APP_A_PREVIOUS'),
             //     ],
+            //     'actor_types' => ['app-a-user'],
             // ],
         ],
     ],

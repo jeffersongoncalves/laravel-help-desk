@@ -61,6 +61,13 @@ abstract class TestCase extends Orchestra
         // setUp of the next test that reuses it.
         $app['config']->set('database.connections.help_desk_central', $this->testing_connection());
 
+        // Routes register at boot and only when a client exists, so the clients
+        // have to be here rather than in a beforeEach.
+        $app['config']->set('help-desk.api.clients', [
+            'app-a' => ['secrets' => ['app-a-secret'], 'actor_types' => ['app-a-user']],
+            'app-b' => ['secrets' => ['app-b-secret'], 'actor_types' => ['app-b-user']],
+        ]);
+
         $app['config']->set('help-desk.models.user', TestUser::class);
         $app['config']->set('help-desk.models.operator', TestUser::class);
         $app['config']->set('help-desk.register_default_listeners', false);

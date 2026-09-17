@@ -1,5 +1,6 @@
 <?php
 
+use JeffersonGoncalves\HelpDesk\Tests\NoApiClientsTestCase;
 use JeffersonGoncalves\HelpDesk\Tests\TestCase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -32,6 +33,8 @@ uses(TestCase::class)
         config()->set('help-desk.scope_to_app', false);
     })
     ->in('Feature');
+
+uses(NoApiClientsTestCase::class)->in('SingleApplication');
 
 /**
  * Assert that the given callback aborts with the expected HTTP status code.

@@ -21,6 +21,14 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!--
+            A single application installation, booted without any API client, so
+            the routes the package only registers for satellites are absent.
+            Its own suite because route registration happens once, at boot.
+        -->
+        <testsuite name="SingleApplication">
+            <directory>tests/SingleApplication</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
