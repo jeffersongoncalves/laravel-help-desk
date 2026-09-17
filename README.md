@@ -837,6 +837,40 @@ $responses = CannedResponse::active()
     ->get();
 ```
 
+A canned response's `body` can carry placeholders, rendered against a ticket (and
+optionally the acting operator) through `CannedResponseService`:
+
+```php
+use JeffersonGoncalves\HelpDesk\Services\CannedResponseService;
+
+$service = app(CannedResponseService::class);
+
+// "Thank you for contacting our support team, John. Your reference is HD-00042."
+$service->render($cannedResponse, $ticket, $operator);
+```
+
+Four placeholders are built in: `{ticket_code}`, `{user_name}`, `{agent_name}` (empty
+when no operator is passed), and `{department}`. An unrecognized placeholder is left
+untouched in the output rather than stripped or throwing.
+
+An application can register its own placeholders — typically from a service provider's
+`boot()` — for business-specific tags the core package has no reason to know about:
+
+```php
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Services\CannedResponseService;
+
+CannedResponseService::resolveVariable('order_number', function (Ticket $ticket, ?Model $agent) {
+    return $ticket->metadata['order_number'] ?? null;
+});
+```
+
+A resolver returning `null` renders as an empty string, the same as a built-in
+placeholder with nothing to show. Registering a resolver under a built-in name
+(`ticket_code`, `user_name`, `agent_name`, `department`) has no effect — the built-in
+substitution always wins, so a canned response reads the same regardless of what an
+application registers.
+
 ### Categories
 
 ```php
