@@ -31,6 +31,8 @@ abstract class TestCase extends Orchestra
         'add_app_key_to_help_desk_tickets_table',
         'add_metadata_to_help_desk_ticket_watchers_table',
         'create_help_desk_ticket_feedback_table',
+        'create_help_desk_sla_policies_table',
+        'add_sla_to_help_desk_tickets_table',
     ];
 
     protected function setUp(): void
@@ -111,7 +113,14 @@ abstract class TestCase extends Orchestra
         $stubsPath = __DIR__.'/../database/migrations';
         $tempPath = sys_get_temp_dir().'/laravel-help-desk-migrations';
 
-        if (! is_dir($tempPath)) {
+        // Stale files from a previous run of this suite on another branch
+        // (different MIGRATION_ORDER, so a table ends up numbered
+        // differently) would otherwise sit here and get loaded too --
+        // loadMigrationsFrom() picks up every *.php file in the directory,
+        // not just the ones this run wrote.
+        if (is_dir($tempPath)) {
+            array_map('unlink', glob($tempPath.'/*.php') ?: []);
+        } else {
             mkdir($tempPath, 0755, true);
         }
 

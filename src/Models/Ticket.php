@@ -45,6 +45,10 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property Carbon|null $closed_at
  * @property Carbon|null $due_at
  * @property Carbon|null $last_replied_at
+ * @property int|null $sla_policy_id
+ * @property Carbon|null $first_response_at
+ * @property Carbon|null $sla_first_response_due_at
+ * @property Carbon|null $sla_resolution_due_at
  * @property array|null $metadata
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -55,6 +59,7 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property-read Model|null $assignedTo
  * @property-read Department $department
  * @property-read Category|null $category
+ * @property-read SlaPolicy|null $slaPolicy
  * @property-read Collection<int, TicketComment> $comments
  * @property-read Collection<int, TicketAttachment> $attachments
  * @property-read Collection<int, TicketHistory> $history
@@ -93,6 +98,10 @@ class Ticket extends Model
         'closed_at',
         'due_at',
         'last_replied_at',
+        'sla_policy_id',
+        'first_response_at',
+        'sla_first_response_due_at',
+        'sla_resolution_due_at',
         'metadata',
     ];
 
@@ -103,6 +112,9 @@ class Ticket extends Model
         'closed_at' => 'datetime',
         'due_at' => 'datetime',
         'last_replied_at' => 'datetime',
+        'first_response_at' => 'datetime',
+        'sla_first_response_due_at' => 'datetime',
+        'sla_resolution_due_at' => 'datetime',
     ];
 
     protected static function newFactory(): TicketFactory
@@ -231,6 +243,12 @@ class Ticket extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    /** @return BelongsTo<SlaPolicy, $this> */
+    public function slaPolicy(): BelongsTo
+    {
+        return $this->belongsTo(SlaPolicy::class, 'sla_policy_id');
     }
 
     /** @return HasMany<TicketComment, $this> */
