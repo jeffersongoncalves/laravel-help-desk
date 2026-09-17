@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Services;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -156,6 +157,22 @@ class TicketService implements TicketRepository
         }
 
         return $ticket;
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, Ticket>
+     */
+    public function forActor(Model $user, int $perPage = 25, int $page = 1): LengthAwarePaginator
+    {
+        // Both conditions, always. The type alone would match another model
+        // class's row with the same key; the key alone would match another
+        // user entirely. This mirrors what the API scopes server-side, except
+        // here nothing else enforces it.
+        return Ticket::query()
+            ->where('user_type', $user->getMorphClass())
+            ->where('user_id', $user->getKey())
+            ->latest()
+            ->paginate(perPage: $perPage, page: $page);
     }
 
     public function addWatcher(Ticket $ticket, Model $watcher): void

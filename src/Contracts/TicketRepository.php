@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Contracts;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Exceptions\InvalidStatusTransitionException;
@@ -61,6 +62,20 @@ interface TicketRepository
      * @throws TicketNotFoundException
      */
     public function findByReference(string $reference): Ticket;
+
+    /**
+     * The tickets a user opened, newest first — what an end-user list shows.
+     *
+     * Paginated because the API endpoint behind it always was: a satellite
+     * asking for "all of them" got the first page and no way to tell.
+     *
+     * The actor is required rather than falling back to the authenticated
+     * user. Which tickets someone may see is the one decision a caller must
+     * not make by omission.
+     *
+     * @return LengthAwarePaginator<int, Ticket>
+     */
+    public function forActor(Model $user, int $perPage = 25, int $page = 1): LengthAwarePaginator;
 
     /**
      * Adding the same watcher twice is a no-op.

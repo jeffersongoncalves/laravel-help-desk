@@ -2,11 +2,11 @@
 
 namespace JeffersonGoncalves\HelpDesk\Api\Repositories;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use JeffersonGoncalves\HelpDesk\Api\HelpDeskClient;
 use JeffersonGoncalves\HelpDesk\Api\HydratesModels;
-use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
 use JeffersonGoncalves\HelpDesk\Api\ResolvesActor;
 use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
@@ -62,18 +62,33 @@ class ApiTicketRepository implements TicketRepository
     }
 
     /**
-     * The tickets the acting user opened, which is what a satellite panel
-     * lists. Not on the contract, because the database driver reaches for
-     * Eloquent directly and has never needed it.
+     * The endpoint has always paginated. Returning only `data` meant a
+     * satellite with more than a page of tickets was shown the first page and
+     * told nothing, so the totals the response already carried are kept.
      *
-     * @return Collection<int, ApiTicket>
+     * @return LengthAwarePaginator<int, Ticket>
      */
-    public function forActor(?Model $user = null): Collection
+    public function forActor(Model $user, int $perPage = 25, int $page = 1): LengthAwarePaginator
     {
-        $payload = $this->client->get('tickets', ['actor' => $this->actorPayload($user)]);
+        $payload = $this->client->get('tickets', [
+            'actor' => $this->actorPayload($user),
+            'per_page' => $perPage,
+            'page' => $page,
+        ]);
 
-        return collect($payload['data'] ?? [])->map(
-            fn (array $ticket) => $this->hydrateTicket($ticket),
+        $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
+        $items = collect($payload['data'] ?? [])
+            ->values()
+            ->map(fn (array $ticket): Ticket => $this->hydrateTicket($ticket));
+
+        // Falling back to the items themselves, rather than to zero: a central
+        // application that answers without meta should look like one page of
+        // what it sent, not like an empty list.
+        return new Paginator(
+            items: $items,
+            total: (int) ($meta['total'] ?? $items->count()),
+            perPage: (int) ($meta['per_page'] ?? $perPage),
+            currentPage: (int) ($meta['current_page'] ?? $page),
         );
     }
 

@@ -334,6 +334,32 @@ So a leaked secret can impersonate any user *of that application*, and none of a
 the app key comes from the signed header, never the body, and every read is scoped by it.
 HMAC gives authenticity and integrity, not confidentiality: **HTTPS is still required**.
 
+#### Reading a list, on either transport
+
+The four methods a user-facing panel needs are on the contracts, so the same call works
+under both drivers and nothing has to branch on which one is configured:
+
+```php
+// The tickets this user opened, newest first. Paginated, because the API
+// endpoint behind it always was.
+$tickets = HelpDesk::tickets()->forActor($user);
+$tickets = HelpDesk::tickets()->forActor($user, perPage: 15, page: 2);
+
+// The options a create form offers: active only, in sort order.
+HelpDesk::departments()->all();
+HelpDesk::departments()->categoriesFor($department->id);
+
+// The bytes of an attachment, for handing a file back to its uploader.
+HelpDesk::attachments()->contents($attachment, $ticket->uuid);
+```
+
+`forActor()` takes the user rather than falling back to whoever is authenticated. Which
+tickets someone may see is not a decision to make by omission.
+
+The ticket uuid on `contents()` is not redundant: it is what the API path needs, and both
+transports check it against the attachment, so a mismatched pair fails the same way
+instead of serving a file from another ticket.
+
 #### What the API driver cannot do
 
 Operator actions throw immediately, naming what to use instead, rather than making a

@@ -48,6 +48,29 @@ On the `api` driver:
 - What works: `createTicket()`, `findTicketByUuid()`, `findTicketByReference()`,
   `addComment()`, and the accessors and `is*()` helpers on what comes back
 
+### Listing, on either driver
+
+These are on the contracts, so write them once — never branch on the driver to read a
+list, and never reach for `Ticket::query()` to build one:
+
+@verbatim
+<code-snippet name="Reads that work under both drivers" lang="php">
+// Paginated. Do not assume the first page is everything.
+$tickets = HelpDesk::tickets()->forActor($user);
+$tickets = HelpDesk::tickets()->forActor($user, perPage: 15, page: 2);
+
+// Active only, in sort order — the options a create form offers.
+HelpDesk::departments()->all();
+HelpDesk::departments()->categoriesFor($department->id);
+
+// The bytes, for showing a file back to its uploader.
+HelpDesk::attachments()->contents($attachment, $ticket->uuid);
+</code-snippet>
+@endverbatim
+
+`forActor()` requires the user. Do not add a fallback to `auth()->user()` at the call
+site — which tickets someone may see is not a decision to make by omission.
+
 @verbatim
 <code-snippet name="Satellite configuration" lang="env">
 HELPDESK_DRIVER=api
