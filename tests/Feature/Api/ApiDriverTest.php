@@ -1,0 +1,236 @@
+<?php
+
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use JeffersonGoncalves\HelpDesk\Api\HelpDeskSignature;
+use JeffersonGoncalves\HelpDesk\Api\Models\ApiTicket;
+use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiTicketRepository;
+use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
+use JeffersonGoncalves\HelpDesk\Exceptions\HelpDeskApiException;
+use JeffersonGoncalves\HelpDesk\Exceptions\TicketNotFoundException;
+use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
+use JeffersonGoncalves\HelpDesk\Tests\TestUser;
+
+beforeEach(function () {
+    config()->set('help-desk.driver', 'api');
+    config()->set('help-desk.app.key', 'app-a');
+    config()->set('help-desk.api.url', 'https://support.example.com');
+    config()->set('help-desk.api.secret', 'app-a-secret');
+});
+
+function ticketPayload(array $overrides = []): array
+{
+    return ['data' => array_merge([
+        'uuid' => '550e8400-e29b-41d4-a716-446655440000',
+        'reference_number' => 'HD-00042',
+        'department_id' => 1,
+        'category_id' => null,
+        'title' => 'Printer offline',
+        'description' => 'It stopped printing.',
+        'status' => 'open',
+        'priority' => 'medium',
+        'source' => 'api',
+        'app_key' => 'app-a',
+        'requester_name' => 'Ada Lovelace',
+        'requester_email' => 'ada@example.com',
+        'closed_at' => null,
+        'due_at' => null,
+        'last_replied_at' => null,
+        'created_at' => '2026-09-17T00:00:00+00:00',
+        'updated_at' => '2026-09-17T00:00:00+00:00',
+    ], $overrides)];
+}
+
+function actorUser(): TestUser
+{
+    return TestUser::create(['name' => 'Ada Lovelace', 'email' => Str::random(8).'@example.com']);
+}
+
+it('binds the API implementations when the driver is api', function () {
+    expect(app(TicketRepository::class))
+        ->toBeInstanceOf(ApiTicketRepository::class);
+});
+
+it('creates a ticket over the wire and hydrates a usable model', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    $ticket = HelpDesk::createTicket([
+        'department_id' => 1,
+        'title' => 'Printer offline',
+        'description' => 'It stopped printing.',
+    ], actorUser());
+
+    expect($ticket)->toBeInstanceOf(ApiTicket::class)
+        ->and($ticket->reference_number)->toBe('HD-00042')
+        ->and($ticket->status)->toBe(TicketStatus::Open)
+        ->and($ticket->isOpen())->toBeTrue()
+        ->and($ticket->requester_name)->toBe('Ada Lovelace')
+        ->and($ticket->exists)->toBeTrue()
+        ->and($ticket->isDirty())->toBeFalse();
+});
+
+it('signs every request it sends', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    Http::assertSent(function ($request) {
+        return $request->hasHeader(HelpDeskSignature::APP_HEADER, 'app-a')
+            && $request->hasHeader(HelpDeskSignature::TIMESTAMP_HEADER)
+            && $request->hasHeader(HelpDeskSignature::NONCE_HEADER)
+            && str_starts_with($request->header(HelpDeskSignature::SIGNATURE_HEADER)[0], 'sha256=')
+            && $request->url() === 'https://support.example.com/help-desk/api/tickets';
+    });
+});
+
+it('sends the actor with its identity snapshot', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    Http::assertSent(function ($request) {
+        // The body is sent raw so the signature covers exactly these bytes,
+        // so read it raw here too rather than through data().
+        $actor = json_decode($request->body(), true)['actor'];
+
+        return $actor['name'] === 'Ada Lovelace'
+            && str_ends_with($actor['email'], '@example.com')
+            && $actor['type'] === TestUser::class;
+    });
+});
+
+it('throws something readable when a relation was never sent', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    $ticket = HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    expect(fn () => $ticket->comments)
+        ->toThrow(
+            HelpDeskApiException::class,
+            'Relation [comments] on ApiTicket needs the database driver.',
+        );
+
+    // And it names what to do instead.
+    try {
+        $ticket->comments;
+    } catch (HelpDeskApiException $e) {
+        expect($e->getMessage())->toContain('HelpDesk::tickets()->findByUuid($uuid)');
+    }
+});
+
+it('returns a relation the response did fill', function () {
+    Http::fake(['*' => Http::response(ticketPayload([
+        'comments' => [[
+            'id' => 1,
+            'body' => 'Any news?',
+            'type' => 'reply',
+            'author_name' => 'Ada Lovelace',
+            'created_at' => '2026-09-17T00:00:00+00:00',
+        ]],
+    ]), 200)]);
+
+    // A read has no actor argument, so it uses the authenticated user.
+    test()->actingAs(actorUser());
+
+    $ticket = app(TicketRepository::class)->findByUuid('550e8400-e29b-41d4-a716-446655440000');
+
+    expect($ticket->comments)->toHaveCount(1)
+        ->and($ticket->comments->first()->body)->toBe('Any news?')
+        ->and($ticket->comments->first()->author_name)->toBe('Ada Lovelace');
+});
+
+it('refuses to save a hydrated model', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    $ticket = HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    expect(fn () => $ticket->save())->toThrow(HelpDeskApiException::class);
+});
+
+it('refuses an operator action without making a request', function () {
+    Http::fake();
+
+    $ticket = new ApiTicket;
+
+    expect(fn () => HelpDesk::closeTicket($ticket))
+        ->toThrow(HelpDeskApiException::class, 'closeTicket() is an operator action');
+
+    expect(fn () => HelpDesk::assignTicket($ticket, actorUser()))
+        ->toThrow(HelpDeskApiException::class);
+
+    expect(fn () => HelpDesk::addNote($ticket, actorUser(), 'internal'))
+        ->toThrow(HelpDeskApiException::class, 'addNote() is an operator action');
+
+    Http::assertNothingSent();
+});
+
+it('maps a rejected signature to a message naming what to check', function () {
+    test()->actingAs(actorUser());
+    Http::fake(['*' => Http::response(['message' => 'Invalid signature.'], 401)]);
+
+    expect(fn () => app(TicketRepository::class)->findByUuid('x'))
+        ->toThrow(HelpDeskApiException::class, 'rejected the signature');
+});
+
+it('maps a 404 to the same exception the database driver throws', function () {
+    // The point of the seam: findByUuid() behaves identically on both drivers.
+    test()->actingAs(actorUser());
+    Http::fake(['*' => Http::response([], 404)]);
+
+    expect(fn () => app(TicketRepository::class)->findByUuid('x'))
+        ->toThrow(TicketNotFoundException::class);
+});
+
+it('surfaces the validation message the central application sent', function () {
+    Http::fake(['*' => Http::response(['errors' => ['title' => ['The title field is required.']]], 422)]);
+
+    expect(fn () => HelpDesk::createTicket(['department_id' => 1], actorUser()))
+        ->toThrow(HelpDeskApiException::class, 'The title field is required.');
+});
+
+it('reports an unexpected status with its code', function () {
+    test()->actingAs(actorUser());
+    Http::fake(['*' => Http::response('boom', 500)]);
+
+    expect(fn () => app(TicketRepository::class)->findByUuid('x'))
+        ->toThrow(HelpDeskApiException::class, 'returned 500');
+});
+
+it('reports a connection failure as unreachable', function () {
+    test()->actingAs(actorUser());
+    Http::fake(fn () => throw new ConnectionException('timed out'));
+
+    expect(fn () => app(TicketRepository::class)->findByUuid('x'))
+        ->toThrow(HelpDeskApiException::class, 'Could not reach the central help desk');
+});
+
+it('never retries a write', function () {
+    Http::fake(['*' => Http::response(ticketPayload(), 201)]);
+
+    HelpDesk::createTicket(['department_id' => 1, 'title' => 'x', 'description' => 'y'], actorUser());
+
+    // A retried write could duplicate a ticket the server already committed.
+    Http::assertSentCount(1);
+});
+
+it('names the missing key rather than sending an unconfigured request', function () {
+    config()->set('help-desk.api.url', null);
+
+    Http::fake();
+
+    expect(fn () => HelpDesk::createTicket(['department_id' => 1], actorUser()))
+        ->toThrow(HelpDeskApiException::class, 'help-desk.api.url');
+
+    Http::assertNothingSent();
+});
+
+it('says who is missing when a read has no actor', function () {
+    Http::fake();
+
+    expect(fn () => app(TicketRepository::class)->findByUuid('x'))
+        ->toThrow(HelpDeskApiException::class, 'could not tell who is acting');
+
+    Http::assertNothingSent();
+});

@@ -48,7 +48,7 @@ it('names the driver and the valid values when the driver is unknown', function 
     expect(fn () => app(TicketRepository::class))
         ->toThrow(
             UnsupportedDriverException::class,
-            "Unsupported help desk driver 'carrier-pigeon'. Set help-desk.driver to one of: database.",
+            "Unsupported help desk driver 'carrier-pigeon'. Set help-desk.driver to one of: database, api.",
         );
 });
 

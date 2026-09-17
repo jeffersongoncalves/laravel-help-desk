@@ -3,6 +3,10 @@
 namespace JeffersonGoncalves\HelpDesk;
 
 use Illuminate\Support\Facades\Event;
+use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiAttachmentRepository;
+use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiCommentRepository;
+use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiDepartmentRepository;
+use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiTicketRepository;
 use JeffersonGoncalves\HelpDesk\Commands\CleanInboundEmailsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CloseStaleTicketsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\PollImapMailboxCommand;
@@ -72,6 +76,12 @@ class HelpDeskServiceProvider extends PackageServiceProvider
             CommentRepository::class => CommentService::class,
             DepartmentRepository::class => DepartmentService::class,
             AttachmentRepository::class => AttachmentService::class,
+        ],
+        'api' => [
+            TicketRepository::class => ApiTicketRepository::class,
+            CommentRepository::class => ApiCommentRepository::class,
+            DepartmentRepository::class => ApiDepartmentRepository::class,
+            AttachmentRepository::class => ApiAttachmentRepository::class,
         ],
     ];
 

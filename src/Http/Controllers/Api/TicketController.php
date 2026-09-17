@@ -18,6 +18,12 @@ class TicketController
     public function index(Request $request): AnonymousResourceCollection
     {
         $tickets = $this->scoped($request)
+            // Still inside the caller's scope, so a reference belonging to
+            // someone else simply returns nothing.
+            ->when(
+                $request->filled('reference_number'),
+                fn ($query) => $query->where('reference_number', $request->string('reference_number')),
+            )
             ->latest()
             ->paginate((int) min($request->integer('per_page', 25), 100));
 

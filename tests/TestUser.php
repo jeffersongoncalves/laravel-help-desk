@@ -2,11 +2,15 @@
 
 namespace JeffersonGoncalves\HelpDesk\Tests;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use JeffersonGoncalves\HelpDesk\Concerns\IsOperator;
 
-class TestUser extends Model
+/**
+ * Authenticatable, because a real satellite's user model is — and the API
+ * driver resolves the actor for a read from whoever is logged in.
+ */
+class TestUser extends Authenticatable
 {
     use IsOperator, Notifiable;
 
