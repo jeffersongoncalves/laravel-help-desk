@@ -20,6 +20,11 @@ class ResendDriver implements EmailDriver
         return 'resend';
     }
 
+    public function testConnection(EmailChannel $channel): array
+    {
+        return ['success' => true, 'message' => 'Webhook-based driver — nothing to test until a webhook is received.'];
+    }
+
     /**
      * Parse the webhook payload from Resend.
      *

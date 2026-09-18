@@ -72,6 +72,33 @@ class ImapDriver implements EmailDriver
         return 'imap';
     }
 
+    public function testConnection(EmailChannel $channel): array
+    {
+        $this->ensureDependenciesInstalled();
+
+        $settings = $channel->settings;
+
+        try {
+            $client = new ClientManager;
+            $connection = $client->make([
+                'host' => $settings['host'],
+                'port' => $settings['port'] ?? 993,
+                'encryption' => $settings['encryption'] ?? 'ssl',
+                'validate_cert' => $settings['validate_cert'] ?? true,
+                'username' => $settings['username'],
+                'password' => $settings['password'],
+                'protocol' => 'imap',
+            ]);
+
+            $connection->connect();
+            $connection->getFolder($settings['folder'] ?? 'INBOX');
+
+            return ['success' => true, 'message' => 'Connected successfully.'];
+        } catch (ConnectionFailedException $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     protected function ensureDependenciesInstalled(): void
     {
         if (! class_exists(ClientManager::class)) {

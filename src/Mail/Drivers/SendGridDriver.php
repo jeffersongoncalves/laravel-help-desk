@@ -18,6 +18,11 @@ class SendGridDriver implements EmailDriver
         return 'sendgrid';
     }
 
+    public function testConnection(EmailChannel $channel): array
+    {
+        return ['success' => true, 'message' => 'Webhook-based driver — nothing to test until a webhook is received.'];
+    }
+
     public function parseWebhookPayload(array $payload): array
     {
         $envelope = json_decode($payload['envelope'] ?? '{}', true);

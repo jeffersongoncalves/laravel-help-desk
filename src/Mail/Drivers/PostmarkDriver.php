@@ -18,6 +18,11 @@ class PostmarkDriver implements EmailDriver
         return 'postmark';
     }
 
+    public function testConnection(EmailChannel $channel): array
+    {
+        return ['success' => true, 'message' => 'Webhook-based driver — nothing to test until a webhook is received.'];
+    }
+
     /**
      * Parse the inbound webhook payload from Postmark.
      *
