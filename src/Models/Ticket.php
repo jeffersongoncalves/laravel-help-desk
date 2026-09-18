@@ -51,6 +51,8 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property Carbon|null $sla_resolution_due_at
  * @property Carbon|null $sla_paused_at
  * @property int $total_sla_paused_minutes
+ * @property Carbon|null $sla_first_response_breached_at
+ * @property Carbon|null $sla_resolution_breached_at
  * @property array|null $metadata
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -115,6 +117,8 @@ class Ticket extends Model
         'sla_resolution_due_at',
         'sla_paused_at',
         'total_sla_paused_minutes',
+        'sla_first_response_breached_at',
+        'sla_resolution_breached_at',
         'metadata',
     ];
 
@@ -130,6 +134,8 @@ class Ticket extends Model
         'sla_resolution_due_at' => 'datetime',
         'sla_paused_at' => 'datetime',
         'total_sla_paused_minutes' => 'integer',
+        'sla_first_response_breached_at' => 'datetime',
+        'sla_resolution_breached_at' => 'datetime',
     ];
 
     protected static function newFactory(): TicketFactory
