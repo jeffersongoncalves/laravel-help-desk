@@ -44,4 +44,12 @@ return [
         'title' => 'Título: :title',
         'action' => 'Ver Chamado',
     ],
+
+    'automation_triggered' => [
+        'subject' => 'Automação Disparada no Chamado :reference',
+        'greeting' => 'Olá!',
+        'body' => 'Uma regra de automação foi disparada neste chamado de suporte.',
+        'title' => 'Título: :title',
+        'action' => 'Ver Chamado',
+    ],
 ];

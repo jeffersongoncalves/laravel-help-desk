@@ -3,12 +3,17 @@
 namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Events\AutomationRuleTriggered;
 use JeffersonGoncalves\HelpDesk\Models\AutomationRule;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
+use JeffersonGoncalves\HelpDesk\Notifications\TicketAutomationTriggeredNotification;
 
 class AutomationService
 {
@@ -24,7 +29,10 @@ class AutomationService
     private const ALLOWED_OPERATORS = ['older_than_hours'];
 
     /** @var list<string> */
-    private const ALLOWED_ACTION_TYPES = ['change_status'];
+    private const ALLOWED_ACTION_TYPES = ['change_status', 'notify'];
+
+    /** @var list<string> */
+    private const ALLOWED_NOTIFIABLES = ['assigned_to', 'requester', 'department_operators'];
 
     public function __construct(
         protected TicketService $ticketService,
@@ -143,12 +151,83 @@ class AutomationService
 
         match ($type) {
             'change_status' => $this->ticketService->changeStatus($ticket, TicketStatus::from($action['value'])),
+            'notify' => $this->notify($ticket, $action),
             default => throw new InvalidArgumentException(
                 "Automation action type [{$type}] is not allowed. Allowed: ".implode(', ', self::ALLOWED_ACTION_TYPES).'.'
             ),
         };
 
         event(new AutomationRuleTriggered($rule, $ticket, $action));
+    }
+
+    /**
+     * @param  array<string, mixed>  $action
+     */
+    protected function notify(Ticket $ticket, array $action): void
+    {
+        $notifiable = $this->resolveNotifiable($ticket, $action['notifiable'] ?? null);
+
+        if ($notifiable === null || ($notifiable instanceof Collection && $notifiable->isEmpty())) {
+            return;
+        }
+
+        $notificationClass = $action['notification'] ?? TicketAutomationTriggeredNotification::class;
+
+        // A rule may name a bare class ("TicketAutomationTriggeredNotification")
+        // rather than a fully-qualified one -- resolve it against this
+        // package's own Notifications namespace before giving up.
+        if (! class_exists($notificationClass)) {
+            $notificationClass = 'JeffersonGoncalves\\HelpDesk\\Notifications\\'.class_basename($notificationClass);
+        }
+
+        Notification::send($notifiable, new $notificationClass($ticket));
+    }
+
+    /**
+     * @return Model|Collection<int, Model>|null
+     */
+    protected function resolveNotifiable(Ticket $ticket, ?string $target): Model|Collection|null
+    {
+        return match ($target) {
+            'assigned_to' => $ticket->resolvedAssignedTo(),
+            'requester' => $ticket->requester(),
+            'department_operators' => $this->resolveDepartmentOperators($ticket),
+            default => throw new InvalidArgumentException(
+                "Automation notifiable [{$target}] is not allowed. Allowed: ".implode(', ', self::ALLOWED_NOTIFIABLES).'.'
+            ),
+        };
+    }
+
+    /**
+     * Every operator assigned to the ticket's department, resolved from the
+     * polymorphic pivot -- an operator model this application does not have
+     * installed is skipped, the same way every other morphed relation in this
+     * package degrades when it crosses an app boundary.
+     *
+     * @return Collection<int, Model>
+     */
+    protected function resolveDepartmentOperators(Ticket $ticket): Collection
+    {
+        $rows = DB::connection($ticket->getConnectionName())
+            ->table('help_desk_department_operator')
+            ->where('department_id', $ticket->department_id)
+            ->get(['operator_type', 'operator_id']);
+
+        $operators = new Collection;
+
+        foreach ($rows->groupBy('operator_type') as $type => $group) {
+            $type = (string) $type;
+
+            if (! Ticket::morphIsResolvable($type)) {
+                continue;
+            }
+
+            $class = Relation::getMorphedModel($type) ?? $type;
+
+            $operators = $operators->merge($class::query()->whereKey($group->pluck('operator_id'))->get());
+        }
+
+        return $operators;
     }
 
     protected function alreadyApplied(AutomationRule $rule, Ticket $ticket): bool
