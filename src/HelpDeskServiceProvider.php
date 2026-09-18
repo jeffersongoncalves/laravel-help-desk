@@ -7,6 +7,7 @@ use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiAttachmentRepository;
 use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiCommentRepository;
 use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiDepartmentRepository;
 use JeffersonGoncalves\HelpDesk\Api\Repositories\ApiTicketRepository;
+use JeffersonGoncalves\HelpDesk\Commands\CheckSlaBreachesCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CleanInboundEmailsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CloseStaleTicketsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\PollImapMailboxCommand;
@@ -66,6 +67,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_sla_policies_table',
                 'add_sla_to_help_desk_tickets_table',
                 'add_sla_pause_to_help_desk_tickets_table',
+                'add_sla_breach_tracking_to_help_desk_tickets_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -73,6 +75,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 PollImapMailboxCommand::class,
                 CleanInboundEmailsCommand::class,
                 CloseStaleTicketsCommand::class,
+                CheckSlaBreachesCommand::class,
             ]);
     }
 
