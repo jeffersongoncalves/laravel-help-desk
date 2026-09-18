@@ -1,0 +1,22 @@
+<?php
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use JeffersonGoncalves\HelpDesk\Database\HelpDeskMigration;
+
+return new class extends HelpDeskMigration
+{
+    public function up(): void
+    {
+        Schema::table('help_desk_email_channels', function (Blueprint $table) {
+            $table->text('settings')->change();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('help_desk_email_channels', function (Blueprint $table) {
+            $table->json('settings')->change();
+        });
+    }
+};

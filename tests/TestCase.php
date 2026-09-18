@@ -38,6 +38,7 @@ abstract class TestCase extends Orchestra
         'create_help_desk_automation_rules_table',
         'create_help_desk_ticket_automations_applied_table',
         'create_help_desk_kb_articles_table',
+        'change_settings_to_text_in_help_desk_email_channels_table',
     ];
 
     protected function setUp(): void
