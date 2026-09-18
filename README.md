@@ -1129,6 +1129,37 @@ php artisan help-desk:close-stale --days=14 --status=resolved
 php artisan help-desk:close-stale --days=14 --dry-run
 ```
 
+## Knowledge Base
+
+`KnowledgeBaseService` searches published articles by title and body, and records views:
+
+```php
+use JeffersonGoncalves\HelpDesk\Services\KnowledgeBaseService;
+
+$articles = $knowledgeBase->search('reset password', departmentId: 3);
+
+$knowledgeBase->recordView($articles->first());
+```
+
+`search()` only returns `is_published` articles, is scoped by `app_key` the same way tickets are when `help-desk.scope_to_app` is enabled, and treats `%`/`_`/`!` in the term as literal characters rather than SQL wildcards.
+
+### Knowledge base deflection
+
+There is no dedicated table for tracking which articles were shown to a requester before they decided to open a ticket anyway. `TicketService::create()` already merges any `metadata` key passed in `$data`, so record the suggestion by writing to that same key — no new core method needed:
+
+```php
+$ticketService->create([
+    'title' => $request->title,
+    'description' => $request->description,
+    'department_id' => $request->department_id,
+    'metadata' => [
+        'suggested_articles' => $suggestedArticleIds, // shown before the ticket was opened
+    ],
+], $request->user());
+```
+
+Read it back the same way: `$ticket->metadata['suggested_articles'] ?? []`.
+
 ## Using the Services Directly
 
 For more control, you can inject the service classes directly:
