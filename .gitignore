@@ -10,6 +10,7 @@ coverage/
 .DS_Store
 Thumbs.db
 .claude/
+.ai/
 .idea/
 .vscode/
 *.sublime-project
