@@ -254,6 +254,15 @@ class Ticket extends Model
         return $this->morphTo('assignedTo');
     }
 
+    /**
+     * The assigned operator, or null when unassigned or their model is not
+     * installed here.
+     */
+    public function resolvedAssignedTo(): ?Model
+    {
+        return $this->resolveMorphed('assignedTo', 'assigned_to_type');
+    }
+
     /** @return BelongsTo<Department, $this> */
     public function department(): BelongsTo
     {

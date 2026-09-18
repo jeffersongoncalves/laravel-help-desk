@@ -44,4 +44,12 @@ return [
         'title' => 'Title: :title',
         'action' => 'View Ticket',
     ],
+
+    'automation_triggered' => [
+        'subject' => 'Automation Triggered on Ticket :reference',
+        'greeting' => 'Hello!',
+        'body' => 'An automation rule was triggered on this support ticket.',
+        'title' => 'Title: :title',
+        'action' => 'View Ticket',
+    ],
 ];
