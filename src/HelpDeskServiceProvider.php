@@ -25,6 +25,7 @@ use JeffersonGoncalves\HelpDesk\Listeners\ApplySlaPolicy;
 use JeffersonGoncalves\HelpDesk\Listeners\AutoReopenOnLowFeedbackRating;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
 use JeffersonGoncalves\HelpDesk\Listeners\ProcessInboundEmail;
+use JeffersonGoncalves\HelpDesk\Listeners\RecordFirstResponse;
 use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketAssignedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketCreatedNotification;
@@ -195,6 +196,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
 
         // SLA due-date calculation
         Event::listen(TicketCreated::class, ApplySlaPolicy::class);
+        Event::listen(CommentAdded::class, RecordFirstResponse::class);
         Event::listen(TicketStatusChanged::class, TrackSlaPause::class);
     }
 }
