@@ -33,6 +33,7 @@ abstract class TestCase extends Orchestra
         'create_help_desk_ticket_feedback_table',
         'create_help_desk_sla_policies_table',
         'add_sla_to_help_desk_tickets_table',
+        'add_sla_pause_to_help_desk_tickets_table',
     ];
 
     protected function setUp(): void

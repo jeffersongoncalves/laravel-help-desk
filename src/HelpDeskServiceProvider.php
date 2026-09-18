@@ -29,6 +29,7 @@ use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketAssignedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketCreatedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketStatusChangedNotification;
+use JeffersonGoncalves\HelpDesk\Listeners\TrackSlaPause;
 use JeffersonGoncalves\HelpDesk\Services\AttachmentService;
 use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
@@ -63,6 +64,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_ticket_feedback_table',
                 'create_help_desk_sla_policies_table',
                 'add_sla_to_help_desk_tickets_table',
+                'add_sla_pause_to_help_desk_tickets_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -193,5 +195,6 @@ class HelpDeskServiceProvider extends PackageServiceProvider
 
         // SLA due-date calculation
         Event::listen(TicketCreated::class, ApplySlaPolicy::class);
+        Event::listen(TicketStatusChanged::class, TrackSlaPause::class);
     }
 }

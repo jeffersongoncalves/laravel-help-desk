@@ -3,6 +3,7 @@
 namespace JeffersonGoncalves\HelpDesk\Services;
 
 use Illuminate\Support\Carbon;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Models\SlaPolicy;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use RuntimeException;
@@ -14,6 +15,12 @@ class SlaService
      * own 0 (Sunday) to 6 (Saturday) numbering.
      */
     protected const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+    /**
+     * Statuses that suspend the resolution SLA clock: the ticket is waiting
+     * on the requester or a third party, not sitting idle on the operator.
+     */
+    protected const PAUSED_STATUSES = [TicketStatus::Pending, TicketStatus::OnHold];
 
     /**
      * Resolves the most specific matching active policy for the ticket's
@@ -39,6 +46,41 @@ class SlaService
         $ticket->save();
 
         return $ticket;
+    }
+
+    /**
+     * Pauses or resumes the resolution SLA clock as the ticket's status
+     * changes. Entering Pending/OnHold from an active status starts the
+     * pause; leaving either of them for an active status ends it, adding the
+     * elapsed time to total_sla_paused_minutes and pushing
+     * sla_resolution_due_at forward by the same amount. Moving directly
+     * between Pending and OnHold (both paused) is a no-op -- sla_paused_at
+     * keeps the time the pause actually started.
+     *
+     * sla_first_response_due_at is never adjusted here: pausing excuses time
+     * the operator is waiting on someone else to resolve the ticket, not the
+     * initial acknowledgement.
+     */
+    public function trackPause(Ticket $ticket, TicketStatus $oldStatus, TicketStatus $newStatus): void
+    {
+        $wasPaused = in_array($oldStatus, self::PAUSED_STATUSES, true);
+        $isPaused = in_array($newStatus, self::PAUSED_STATUSES, true);
+
+        if ($isPaused && ! $wasPaused) {
+            $ticket->update(['sla_paused_at' => now()]);
+
+            return;
+        }
+
+        if ($wasPaused && ! $isPaused && $ticket->sla_paused_at !== null) {
+            $elapsedMinutes = (int) $ticket->sla_paused_at->diffInMinutes(now());
+
+            $ticket->update([
+                'total_sla_paused_minutes' => $ticket->total_sla_paused_minutes + $elapsedMinutes,
+                'sla_resolution_due_at' => $ticket->sla_resolution_due_at?->copy()->addMinutes($elapsedMinutes),
+                'sla_paused_at' => null,
+            ]);
+        }
     }
 
     /**
