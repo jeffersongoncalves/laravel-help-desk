@@ -39,6 +39,7 @@ use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
 use JeffersonGoncalves\HelpDesk\Services\FeedbackService;
 use JeffersonGoncalves\HelpDesk\Services\InboundEmailService;
+use JeffersonGoncalves\HelpDesk\Services\KnowledgeBaseService;
 use JeffersonGoncalves\HelpDesk\Services\SlaService;
 use JeffersonGoncalves\HelpDesk\Services\TicketService;
 use Spatie\LaravelPackageTools\Package;
@@ -72,6 +73,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'add_sla_breach_tracking_to_help_desk_tickets_table',
                 'create_help_desk_automation_rules_table',
                 'create_help_desk_ticket_automations_applied_table',
+                'create_help_desk_kb_articles_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -114,6 +116,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         $this->app->singleton(FeedbackService::class);
         $this->app->singleton(SlaService::class);
         $this->app->singleton(AutomationService::class);
+        $this->app->singleton(KnowledgeBaseService::class);
 
         $this->bindRepositories();
 

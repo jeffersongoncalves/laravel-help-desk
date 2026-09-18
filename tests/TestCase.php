@@ -37,6 +37,7 @@ abstract class TestCase extends Orchestra
         'add_sla_breach_tracking_to_help_desk_tickets_table',
         'create_help_desk_automation_rules_table',
         'create_help_desk_ticket_automations_applied_table',
+        'create_help_desk_kb_articles_table',
     ];
 
     protected function setUp(): void
