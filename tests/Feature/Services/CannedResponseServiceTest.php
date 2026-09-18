@@ -6,6 +6,10 @@ use JeffersonGoncalves\HelpDesk\Models\Ticket;
 use JeffersonGoncalves\HelpDesk\Services\CannedResponseService;
 use JeffersonGoncalves\HelpDesk\Tests\TestUser;
 
+afterEach(function () {
+    CannedResponseService::flushCustomResolvers();
+});
+
 beforeEach(function () {
     $this->service = app(CannedResponseService::class);
 
@@ -71,4 +75,58 @@ it('returns a body with no placeholders unchanged', function () {
     $rendered = $this->service->render($response, $this->ticket);
 
     expect($rendered)->toBe('Thanks for reaching out.');
+});
+
+it('substitutes a registered custom variable', function () {
+    CannedResponseService::resolveVariable('order_number', fn () => 'ORD-42');
+
+    $response = makeCannedResponse('Order {order_number} for ticket {ticket_code}.');
+
+    $rendered = $this->service->render($response, $this->ticket);
+
+    expect($rendered)->toBe("Order ORD-42 for ticket {$this->ticket->reference_number}.");
+});
+
+it('passes the ticket and agent to a custom resolver', function () {
+    $agent = TestUser::create(['name' => 'Agent Smith', 'email' => 'agent@example.com']);
+    $seen = [];
+
+    CannedResponseService::resolveVariable('order_number', function ($ticket, $resolvedAgent) use (&$seen) {
+        $seen = [$ticket, $resolvedAgent];
+
+        return 'ORD-42';
+    });
+
+    $this->service->render(makeCannedResponse('{order_number}'), $this->ticket, $agent);
+
+    expect($seen[0]->is($this->ticket))->toBeTrue()
+        ->and($seen[1]->is($agent))->toBeTrue();
+});
+
+it('never lets a custom resolver override a core placeholder', function () {
+    CannedResponseService::resolveVariable('ticket_code', fn () => 'HIJACKED');
+
+    $response = makeCannedResponse('Ticket {ticket_code}.');
+
+    $rendered = $this->service->render($response, $this->ticket);
+
+    expect($rendered)->toBe("Ticket {$this->ticket->reference_number}.");
+});
+
+it('renders an empty string when a custom resolver has nothing for this ticket', function () {
+    CannedResponseService::resolveVariable('order_number', fn () => null);
+
+    $response = makeCannedResponse('Order {order_number}.');
+
+    $rendered = $this->service->render($response, $this->ticket);
+
+    expect($rendered)->toBe('Order .');
+});
+
+it('does not leak a custom resolver registered in a previous test', function () {
+    $response = makeCannedResponse('Order {order_number}.');
+
+    $rendered = $this->service->render($response, $this->ticket);
+
+    expect($rendered)->toBe('Order {order_number}.');
 });
