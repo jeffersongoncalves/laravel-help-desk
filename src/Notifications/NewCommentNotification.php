@@ -61,11 +61,11 @@ class NewCommentNotification extends Notification implements ShouldQueue
     protected function addThreadingHeaders(MailMessage $message): void
     {
         $domain = parse_url(config('app.url', 'localhost'), PHP_URL_HOST) ?: 'localhost';
-        $messageId = sprintf('<%s-%s-%s@%s>', $this->ticket->uuid, 'comment', $this->comment->id, $domain);
+        $messageId = sprintf('%s-%s-%s@%s', $this->ticket->uuid, 'comment', $this->comment->id, $domain);
         $references = sprintf('<%s-%s@%s>', $this->ticket->uuid, 'created', $domain);
 
         $message->withSymfonyMessage(function ($symfonyMessage) use ($messageId, $references) {
-            $symfonyMessage->getHeaders()->addTextHeader('Message-ID', $messageId);
+            $symfonyMessage->getHeaders()->addIdHeader('Message-ID', $messageId);
             $symfonyMessage->getHeaders()->addTextHeader('In-Reply-To', $references);
             $symfonyMessage->getHeaders()->addTextHeader('References', $references);
             $symfonyMessage->getHeaders()->addTextHeader('X-HelpDesk-Ticket-Ref', $this->ticket->reference_number);

@@ -45,7 +45,7 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
         if (config('help-desk.email.threading_enabled', true)) {
             $messageId = $this->generateMessageId();
             $message->withSymfonyMessage(function ($symfonyMessage) use ($messageId) {
-                $symfonyMessage->getHeaders()->addTextHeader('Message-ID', $messageId);
+                $symfonyMessage->getHeaders()->addIdHeader('Message-ID', $messageId);
                 $symfonyMessage->getHeaders()->addTextHeader('X-HelpDesk-Ticket-Ref', $this->ticket->reference_number);
             });
         }
@@ -69,6 +69,6 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
     {
         $domain = parse_url(config('app.url', 'localhost'), PHP_URL_HOST) ?: 'localhost';
 
-        return sprintf('<%s-%s@%s>', $this->ticket->uuid, 'created', $domain);
+        return sprintf('%s-%s@%s', $this->ticket->uuid, 'created', $domain);
     }
 }
