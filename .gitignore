@@ -11,6 +11,8 @@ coverage/
 Thumbs.db
 .claude/
 .ai/
+/CLAUDE.md
+/docs/
 .idea/
 .vscode/
 *.sublime-project
