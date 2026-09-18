@@ -11,6 +11,7 @@ use JeffersonGoncalves\HelpDesk\Commands\CheckSlaBreachesCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CleanInboundEmailsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\CloseStaleTicketsCommand;
 use JeffersonGoncalves\HelpDesk\Commands\PollImapMailboxCommand;
+use JeffersonGoncalves\HelpDesk\Commands\RunAutomationsCommand;
 use JeffersonGoncalves\HelpDesk\Contracts\AttachmentRepository;
 use JeffersonGoncalves\HelpDesk\Contracts\CommentRepository;
 use JeffersonGoncalves\HelpDesk\Contracts\DepartmentRepository;
@@ -33,6 +34,7 @@ use JeffersonGoncalves\HelpDesk\Listeners\SendTicketCreatedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketStatusChangedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\TrackSlaPause;
 use JeffersonGoncalves\HelpDesk\Services\AttachmentService;
+use JeffersonGoncalves\HelpDesk\Services\AutomationService;
 use JeffersonGoncalves\HelpDesk\Services\CommentService;
 use JeffersonGoncalves\HelpDesk\Services\DepartmentService;
 use JeffersonGoncalves\HelpDesk\Services\FeedbackService;
@@ -68,6 +70,8 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'add_sla_to_help_desk_tickets_table',
                 'add_sla_pause_to_help_desk_tickets_table',
                 'add_sla_breach_tracking_to_help_desk_tickets_table',
+                'create_help_desk_automation_rules_table',
+                'create_help_desk_ticket_automations_applied_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -76,6 +80,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 CleanInboundEmailsCommand::class,
                 CloseStaleTicketsCommand::class,
                 CheckSlaBreachesCommand::class,
+                RunAutomationsCommand::class,
             ]);
     }
 
@@ -108,6 +113,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         $this->app->singleton(InboundEmailService::class);
         $this->app->singleton(FeedbackService::class);
         $this->app->singleton(SlaService::class);
+        $this->app->singleton(AutomationService::class);
 
         $this->bindRepositories();
 
