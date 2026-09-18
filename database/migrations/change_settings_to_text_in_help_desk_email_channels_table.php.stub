@@ -13,10 +13,10 @@ return new class extends HelpDeskMigration
         });
     }
 
-    public function down(): void
-    {
-        Schema::table('help_desk_email_channels', function (Blueprint $table) {
-            $table->json('settings')->change();
-        });
-    }
+    /**
+     * Intentionally a no-op: casting back to json isn't safe once
+     * encrypted:array ciphertext (never valid JSON) has been written to the
+     * column — Postgres rejects the ALTER outright.
+     */
+    public function down(): void {}
 };
