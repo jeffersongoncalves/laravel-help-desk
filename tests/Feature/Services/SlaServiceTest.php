@@ -3,6 +3,7 @@
 use Illuminate\Support\Carbon;
 use JeffersonGoncalves\HelpDesk\Enums\CommentType;
 use JeffersonGoncalves\HelpDesk\Enums\TicketPriority;
+use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
 use JeffersonGoncalves\HelpDesk\Models\Department;
 use JeffersonGoncalves\HelpDesk\Models\SlaPolicy;
 use JeffersonGoncalves\HelpDesk\Models\Ticket;
@@ -144,6 +145,74 @@ it('rolls a due date created on a closed day forward to the next open day', func
 
     $nextMonday = $saturday->copy()->addDays(2)->setTime(9, 30);
     expect($ticket->sla_first_response_due_at)->toEqual($nextMonday);
+});
+
+it('pauses the resolution clock when entering Pending', function () {
+    $ticket = makeSlaTicket(['sla_resolution_due_at' => now()->addHours(4)]);
+
+    $this->service->trackPause($ticket, TicketStatus::Open, TicketStatus::Pending);
+
+    expect($ticket->sla_paused_at)->not->toBeNull();
+});
+
+it('resumes and pushes the resolution due date forward by the elapsed pause', function () {
+    $dueAt = now()->addHours(4);
+    $ticket = makeSlaTicket(['sla_resolution_due_at' => $dueAt]);
+
+    $this->service->trackPause($ticket, TicketStatus::Open, TicketStatus::Pending);
+
+    $this->travel(30)->minutes();
+
+    $this->service->trackPause($ticket, TicketStatus::Pending, TicketStatus::InProgress);
+
+    expect($ticket->sla_paused_at)->toBeNull()
+        ->and($ticket->total_sla_paused_minutes)->toBe(30)
+        // ->timestamp (whole seconds): the round trip through the database
+        // drops sub-second precision, so comparing full Carbon equality
+        // against the in-memory $dueAt would flag a spurious microsecond
+        // mismatch that has nothing to do with the 30-minute push.
+        ->and($ticket->sla_resolution_due_at->timestamp)->toBe($dueAt->copy()->addMinutes(30)->timestamp);
+});
+
+it('does not reset or double-count the pause moving directly between Pending and OnHold', function () {
+    $ticket = makeSlaTicket();
+
+    $this->service->trackPause($ticket, TicketStatus::Open, TicketStatus::Pending);
+    $pausedAt = $ticket->sla_paused_at;
+
+    $this->travel(10)->minutes();
+
+    $this->service->trackPause($ticket, TicketStatus::Pending, TicketStatus::OnHold);
+
+    expect($ticket->sla_paused_at->timestamp)->toBe($pausedAt->timestamp)
+        ->and($ticket->total_sla_paused_minutes)->toBe(0);
+});
+
+it('resumes without erroring when there is no resolution due date to push', function () {
+    $ticket = makeSlaTicket();
+
+    $this->service->trackPause($ticket, TicketStatus::Open, TicketStatus::Pending);
+
+    $this->travel(15)->minutes();
+
+    $this->service->trackPause($ticket, TicketStatus::Pending, TicketStatus::InProgress);
+
+    expect($ticket->sla_paused_at)->toBeNull()
+        ->and($ticket->total_sla_paused_minutes)->toBe(15)
+        ->and($ticket->sla_resolution_due_at)->toBeNull();
+});
+
+it('never adjusts sla_first_response_due_at when pausing or resuming', function () {
+    $firstResponseDue = now()->addHour();
+    $ticket = makeSlaTicket(['sla_first_response_due_at' => $firstResponseDue]);
+
+    $this->service->trackPause($ticket, TicketStatus::Open, TicketStatus::Pending);
+
+    $this->travel(20)->minutes();
+
+    $this->service->trackPause($ticket, TicketStatus::Pending, TicketStatus::InProgress);
+
+    expect($ticket->sla_first_response_due_at->timestamp)->toBe($firstResponseDue->timestamp);
 });
 
 it('records first_response_at on the first reply from someone other than the requester', function () {

@@ -49,6 +49,8 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property Carbon|null $first_response_at
  * @property Carbon|null $sla_first_response_due_at
  * @property Carbon|null $sla_resolution_due_at
+ * @property Carbon|null $sla_paused_at
+ * @property int $total_sla_paused_minutes
  * @property array|null $metadata
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -79,6 +81,15 @@ class Ticket extends Model
 
     protected $table = 'help_desk_tickets';
 
+    /**
+     * Matches the column's DB-level default so a freshly-built instance
+     * behaves the same as one reloaded from the database, without requiring
+     * a refresh() first.
+     */
+    protected $attributes = [
+        'total_sla_paused_minutes' => 0,
+    ];
+
     protected $fillable = [
         'uuid',
         'reference_number',
@@ -102,6 +113,8 @@ class Ticket extends Model
         'first_response_at',
         'sla_first_response_due_at',
         'sla_resolution_due_at',
+        'sla_paused_at',
+        'total_sla_paused_minutes',
         'metadata',
     ];
 
@@ -115,6 +128,8 @@ class Ticket extends Model
         'first_response_at' => 'datetime',
         'sla_first_response_due_at' => 'datetime',
         'sla_resolution_due_at' => 'datetime',
+        'sla_paused_at' => 'datetime',
+        'total_sla_paused_minutes' => 'integer',
     ];
 
     protected static function newFactory(): TicketFactory
