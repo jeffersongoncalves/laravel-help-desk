@@ -10,6 +10,104 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.10.0 - 2026-09-17
+
+Five roadmap gaps closed in one pass: canned response variables, CSAT, SLA policies with breach detection, configurable automation, and a knowledge base foundation. Plus two bug fixes underneath all of them.
+
+Everything here is additive. Nothing changes `TicketService`, `CommentService`, `AttachmentService`, `DepartmentService` or the existing enums' public signatures. Four new migrations, one new column set on `tickets`, no breaking changes.
+
+### Two fixes worth knowing about first
+
+- **`TicketService::update()` now validates a status transition even when `status` arrives inside the `$data` array**, not only through `changeStatus()`. Before this, `$tickets->update($ticket, ['status' => 'closed', 'title' => '...'])` silently bypassed `TicketStatus::canTransitionTo()` — a ticket could jump straight from `open` to `resolved` if the caller happened to pass both fields in one call.
+- **`TicketUpdated` now carries the performer on `unassign()` too.** `assign()` always has; `unassign()` accepted a `$performer` parameter and quietly dropped it before this release, so an unassignment's history/event trail showed no one responsible for it.
+
+### Canned response variables
+
+`CannedResponseService::render()` substitutes `{ticket_code}`, `{user_name}`, `{agent_name}` and `{department}` in a response body, plus a registry for your own:
+
+```php
+CannedResponseService::resolveVariable('order_number', function (Ticket $ticket, ?Model $agent) {
+    return $ticket->metadata['order_number'] ?? '';
+});
+
+```
+A custom resolver can never override a core placeholder, and a missing value renders as an empty string rather than `null` or an exception — a template with a variable nobody filled in still renders the rest of the message.
+
+### Customer satisfaction (CSAT)
+
+`help_desk_ticket_feedback` (one row per ticket, polymorphic `submitted_by`) and `FeedbackService::submit()`, gated by `Ticket::canReceiveFeedback()`:
+
+```php
+if ($ticket->canReceiveFeedback()) {
+    $feedback->submit($ticket, rating: 5, comment: '...', submittedBy: $user);
+}
+
+```
+Feedback is accepted on a `resolved` or `closed` ticket, inside a configurable window (`help-desk.feedback.window_days`, default 14). A rating outside 1–5 is rejected before anything is written.
+
+`help-desk.feedback.auto_reopen` (off by default) reopens a ticket automatically when the rating is at or below a configured threshold, through the normal `TicketService::reopen()` path — so it respects `allow_reopen` and every other transition rule, rather than writing the status column directly.
+
+### SLA policies and breach detection
+
+`help_desk_sla_policies` (department + priority, first-response and resolution minutes, a `business_hours` JSON column) and new columns on `tickets` for the computed due dates. `SlaService::applyPolicy()` resolves the most specific matching policy — department+priority beats department-only beats priority-only beats a generic policy — on `TicketCreated`.
+
+```php
+'business_hours' => ['is_24_7' => true],
+// or a weekly window in UTC:
+'business_hours' => ['mon' => ['09:00', '18:00'], 'tue' => ['09:00', '18:00'], ...],
+
+```
+The resolution clock pauses while a ticket sits in `Pending` or `OnHold` — `sla_paused_at` and `total_sla_paused_minutes` push `sla_resolution_due_at` forward by however long it was actually waiting, rather than counting that time against the operator.
+
+`help-desk:check-sla-breaches --dry-run` flags first-response and resolution breaches once each (a breach timestamp column makes it idempotent across runs) and dispatches `TicketSlaFirstResponseBreached` / `TicketSlaResolutionBreached`.
+
+### Configurable automation
+
+`help_desk_automation_rules` (JSON `conditions` and `actions`) generalizes the pattern `CloseStaleTicketsCommand` already used for one hardcoded rule:
+
+```php
+AutomationRule::create([
+    'name' => 'Close stale pending tickets',
+    'conditions' => ['field' => 'last_replied_at', 'operator' => 'older_than_hours', 'value' => 24, 'status' => ['pending']],
+    'actions' => [
+        ['type' => 'change_status', 'value' => 'closed'],
+        ['type' => 'notify', 'notifiable' => 'assigned_to'],
+    ],
+]);
+
+```
+`AutomationService::evaluate()` builds every query from an explicit field/operator allow-list — a rule's JSON never reaches raw SQL — and applies actions exclusively through `TicketService`, so `change_status` is validated by the same transition table as everywhere else. `notify` sends `TicketAutomationTriggeredNotification` to `assigned_to`, `requester`, or every `department_operators`; no resolvable target is a no-op, not an exception.
+
+A `help_desk_ticket_automations_applied` guard table stops a rule from reprocessing the same ticket once it has acted — the anti-loop protection a `notify`-only rule (nothing about the ticket changes to stop it matching again) specifically needs. `help-desk:run-automations --dry-run` runs it from a schedule.
+
+### Knowledge base foundation
+
+`help_desk_kb_articles` (department/category optional, `app_key`-isolated the same way tickets are) and `KnowledgeBaseService`:
+
+```php
+$articles = $knowledgeBase->search('reset password', departmentId: 3);
+$knowledgeBase->recordView($articles->first());
+
+```
+`search()` matches title and body, published-only, with the same escaped-LIKE handling as `Ticket::scopeSearch()` — `%`, `_` and `!` in what a user typed stay literal characters, not SQL wildcards.
+
+Deflection tracking needs no new table: `TicketService::create()` already merges any `metadata` key you pass, so recording which articles were shown before someone opened a ticket anyway is `'metadata' => ['suggested_articles' => [...]]` on the existing `create()` call. Documented in the README.
+
+### A linear pipeline for stepper UIs
+
+`TicketStatus::pipelineSteps()` returns `[Open, InProgress, Resolved, Closed]` — the happy path a visual stepper renders — separately from `allowedTransitions()`'s full branching graph. `pipelineStep()` maps `Pending`/`OnHold` onto `InProgress`, since the ticket is still being worked, just currently waiting on someone else.
+
+### Upgrading
+
+```bash
+composer update jeffersongoncalves/laravel-help-desk
+php artisan migrate
+
+```
+Five new tables (`help_desk_ticket_feedback`, `help_desk_sla_policies`, `help_desk_automation_rules`, `help_desk_ticket_automations_applied`, `help_desk_kb_articles`), new SLA columns on `help_desk_tickets`. Every new feature is opt-in: no SLA policy means no due dates computed, no automation rule means nothing runs, `help-desk.feedback.auto_reopen` and `help-desk.register_default_listeners` default the same way they always have.
+
+**Full Changelog**: https://github.com/jeffersongoncalves/laravel-help-desk/compare/v1.9.0...v1.10.0
+
 ## v1.9.0 - 2026-09-16
 
 A user-facing list a satellite can actually narrow, and two bugs that made the API driver's hydrated models quietly wrong.
@@ -29,6 +127,7 @@ $tickets = HelpDesk::tickets()->forActor($user,
     search: 'scanner',                             // title and reference number
     sort: 'priority', direction: 'desc',           // one of Ticket::SORTABLE
 );
+
 
 ```
 Over the API they are query parameters on `GET tickets`: `status[]`, `priority[]`, `q`, `sort` and `direction`. Every one of them is applied *after* the actor scope, so a filter can only narrow what is asked for — never widen what a satellite may see.
@@ -62,6 +161,7 @@ $ticket = HelpDesk::tickets()->findByUuid($uuid);
 $ticket->attachments;                   // Collection<ApiTicketAttachment>
 $ticket->comments->first()->attachments; // its own, from the same response
 
+
 ```
 The rule that made the trait worth having still holds: a response that did not carry attachments leaves the relation unset, so reading it throws something legible rather than returning a trustworthy-looking empty collection.
 
@@ -69,6 +169,7 @@ The rule that made the trait worth having still holds: a response that did not c
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 ```
 No migration, no configuration change. Applications implementing `TicketRepository` themselves need the five new optional parameters on `forActor()`; everything calling the facade is unaffected.
@@ -90,6 +191,7 @@ HelpDesk::closeTicket($ticket, $user);
 HelpDesk::reopenTicket($ticket, $user);
 
 
+
 ```
 `POST /help-desk/api/tickets/{uuid}/status` takes an allow-list of exactly two values. `resolved`, `in_progress`, `pending` and `on_hold` carry operator and SLA meaning and stay unreachable from a satellite — and the allow-list is enforced by the central application, not only by the client, because a satellite is not a trust boundary.
 
@@ -101,6 +203,7 @@ Everything else still throws:
 HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user);
 // HelpDeskApiException: Changing a ticket to resolved is an operator action and
 // the API driver cannot perform it.
+
 
 
 ```
@@ -120,6 +223,7 @@ HelpDesk::departments()->categoriesFor($department->id);
 HelpDesk::attachments()->contents($attachment, $ticket->uuid);
 
 
+
 ```
 `forActor()` takes the user rather than falling back to whoever is authenticated. Which tickets someone may see is not a decision to make by omission.
 
@@ -137,6 +241,7 @@ Undocumented and unconsumed in v1.7.0, so nothing in the wild hit it — but it 
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 ```
@@ -167,6 +272,7 @@ HELPDESK_API_SECRET=a-long-random-string
 
 
 
+
 ```
 Calling code does not change. The facade is the same and what comes back is still a `Ticket`, with its accessors, enum casts and `is*()` helpers intact.
 
@@ -176,6 +282,7 @@ $ticket = HelpDesk::createTicket([...], $user);
 $ticket->reference_number;  // 'HD-00042'
 $ticket->isOpen();          // true
 $ticket->requester_name;    // 'Ada Lovelace'
+
 
 
 
@@ -189,6 +296,7 @@ So a leaked secret can impersonate any user *of that application*, and none of a
 ```
 canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
 signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+
 
 
 
@@ -224,6 +332,7 @@ composer update jeffersongoncalves/laravel-help-desk
 
 
 
+
 ```
 No migration. No configuration change unless you want the new transport.
 
@@ -243,6 +352,7 @@ Worse than incomplete: it told an agent to read the polymorphic relations direct
 $ticket->user        // fatal, not null, when applications share a database
 $comment->author
 $attachment->uploadedBy
+
 
 
 
@@ -295,6 +405,7 @@ $row->resolvedWatcher();
 
 
 
+
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
 
@@ -327,6 +438,7 @@ php artisan migrate
 
 
 
+
 ```
 One additive migration, `add_metadata_to_help_desk_ticket_watchers_table`: a nullable JSON column on `help_desk_ticket_watchers`. It is the only one of the five tables that had no `metadata` column.
 
@@ -352,6 +464,7 @@ $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -367,6 +480,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
