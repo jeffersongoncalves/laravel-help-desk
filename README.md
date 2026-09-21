@@ -762,6 +762,9 @@ $overdue = Ticket::overdue()->get();
 // Unassigned tickets
 $unassigned = Ticket::unassigned()->get();
 
+// Tickets raised by one company, in a multi-company installation
+$acme = Ticket::forCompany('acme-inc')->open()->get();
+
 // User's tickets (via trait)
 $user->helpDeskTickets;
 
@@ -784,6 +787,12 @@ $operator->helpDeskAssignedTickets;  // tickets assigned to them
 $operator->helpDeskDepartments;      // departments they operate, with a `role` pivot
 $operator->helpDeskHistory;          // every action they performed
 ```
+
+`company_id` is a plain nullable column: the package has no notion of what a "company" is,
+it just carries whatever value you pass in when creating the ticket (e.g.
+`$user->company_id`) and lets you filter by it with `forCompany()`. Useful for a single
+installation that serves several companies through one set of users/departments, where each
+company's users should see every ticket raised by their own company, not just their own.
 
 ### Ticket History
 

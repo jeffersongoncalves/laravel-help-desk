@@ -30,6 +30,7 @@ class TicketResource extends JsonResource
             'priority' => $this->resource->priority->value,
             'source' => $this->resource->source,
             'app_key' => $this->resource->app_key,
+            'company_id' => $this->resource->company_id,
             'requester_name' => $this->resource->requester_name,
             'requester_email' => $this->resource->requester_email,
             'closed_at' => $this->resource->closed_at?->toIso8601String(),

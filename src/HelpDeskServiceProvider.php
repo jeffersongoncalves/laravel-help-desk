@@ -65,6 +65,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_email_channels_table',
                 'create_help_desk_inbound_emails_table',
                 'add_app_key_to_help_desk_tickets_table',
+                'add_company_id_to_help_desk_tickets_table',
                 'add_metadata_to_help_desk_ticket_watchers_table',
                 'create_help_desk_ticket_feedback_table',
                 'create_help_desk_sla_policies_table',

@@ -216,7 +216,7 @@ it('publishes only the fields the resource lists', function () {
     // A column added later must not appear without someone deciding it should.
     expect(array_keys($response->json('data')))->toBe([
         'uuid', 'reference_number', 'department_id', 'category_id', 'title',
-        'description', 'status', 'priority', 'source', 'app_key',
+        'description', 'status', 'priority', 'source', 'app_key', 'company_id',
         'requester_name', 'requester_email', 'closed_at', 'due_at',
         'last_replied_at', 'created_at', 'updated_at', 'comments', 'attachments',
     ]);
