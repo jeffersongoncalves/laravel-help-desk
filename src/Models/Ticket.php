@@ -40,6 +40,7 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property TicketPriority $priority
  * @property string $source
  * @property string|null $app_key
+ * @property string|null $company_id
  * @property-read string|null $app_name
  * @property string|null $email_message_id
  * @property Carbon|null $closed_at
@@ -107,6 +108,7 @@ class Ticket extends Model
         'priority',
         'source',
         'app_key',
+        'company_id',
         'email_message_id',
         'closed_at',
         'due_at',
@@ -330,6 +332,21 @@ class Ticket extends Model
         return $key === null
             ? $query->whereNull('app_key')
             : $query->where('app_key', $key);
+    }
+
+    /**
+     * Tickets raised by one company in a multi-company installation. The
+     * value is supplied by the caller when creating a ticket — the package
+     * has no notion of what a "company" is, only that tickets may carry one.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForCompany(Builder $query, ?string $companyId): Builder
+    {
+        return $companyId === null
+            ? $query->whereNull('company_id')
+            : $query->where('company_id', $companyId);
     }
 
     /** @param Builder<static> $query */
