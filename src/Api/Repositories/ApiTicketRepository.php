@@ -30,6 +30,11 @@ class ApiTicketRepository implements TicketRepository
 
     public function create(array $data, Model $user): Ticket
     {
+        // An integer id is common (`$user->empresa_id`); the column is a string.
+        if (isset($data['company_id'])) {
+            $data['company_id'] = (string) $data['company_id'];
+        }
+
         $payload = $this->client->post('tickets', $data + ['actor' => $this->actorPayload($user)]);
 
         return $this->hydrateTicket($payload['data']);

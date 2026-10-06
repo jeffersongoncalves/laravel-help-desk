@@ -72,6 +72,24 @@ it('creates a ticket over the wire and hydrates a usable model', function () {
         ->and($ticket->isDirty())->toBeFalse();
 });
 
+it('carries the company name over the wire', function () {
+    Http::fake(['*' => Http::response(ticketPayload(['company_id' => '4', 'company_name' => 'Acme Inc.']), 201)]);
+
+    $ticket = HelpDesk::createTicket([
+        'department_id' => 1,
+        'title' => 'Printer offline',
+        'description' => 'It stopped printing.',
+        'company_id' => 4,
+        'company_name' => 'Acme Inc.',
+    ], actorUser());
+
+    Http::assertSent(fn ($request) => $request['company_id'] === '4'
+        && $request['company_name'] === 'Acme Inc.');
+
+    expect($ticket->company_name)->toBe('Acme Inc.')
+        ->and($ticket->company_id)->toBe('4');
+});
+
 it('signs every request it sends', function () {
     Http::fake(['*' => Http::response(ticketPayload(), 201)]);
 

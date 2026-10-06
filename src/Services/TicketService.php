@@ -27,6 +27,11 @@ class TicketService implements TicketRepository
     public function create(array $data, Model $user): Ticket
     {
         return DB::transaction(function () use ($data, $user) {
+            // Not a column: the package has no companies table, so the label
+            // travels in metadata the way the requester's name does.
+            $companyName = $data['company_name'] ?? null;
+            unset($data['company_name']);
+
             $ticket = new Ticket;
             $ticket->fill($data);
             $ticket->user_type = $user->getMorphClass();
@@ -37,7 +42,7 @@ class TicketService implements TicketRepository
             // rewrite who opened the ticket.
             $ticket->metadata = array_merge($ticket->metadata ?? [], [
                 'requester' => Ticket::snapshotOf($user),
-            ]);
+            ], filled($companyName) ? ['company' => ['name' => (string) $companyName]] : []);
 
             if (! isset($data['source'])) {
                 $ticket->source = 'web';
