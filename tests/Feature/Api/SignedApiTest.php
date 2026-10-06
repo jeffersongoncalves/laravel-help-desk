@@ -75,6 +75,21 @@ it('opens a ticket, stamping the app key from the signature', function () {
         ->and($ticket->metadata['requester'])->toBe(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']);
 });
 
+it('stores the company id and name a satellite sends', function () {
+    callApi('POST', '/help-desk/api/tickets', [
+        'actor' => ADA,
+        'department_id' => Department::factory()->create()->id,
+        'title' => 'Printer offline',
+        'description' => 'It stopped printing.',
+        'company_id' => '4',
+        'company_name' => 'Acme Inc.',
+    ])->assertCreated()
+        ->assertJsonPath('data.company_id', '4')
+        ->assertJsonPath('data.company_name', 'Acme Inc.');
+
+    expect(Ticket::firstOrFail()->company_name)->toBe('Acme Inc.');
+});
+
 it('lists only the caller application and the acting user', function () {
     $mine = apiTicket(ADA);
     apiTicket(GRACE);                          // same app, another user
@@ -217,7 +232,7 @@ it('publishes only the fields the resource lists', function () {
     expect(array_keys($response->json('data')))->toBe([
         'uuid', 'reference_number', 'department_id', 'category_id', 'title',
         'description', 'status', 'priority', 'source', 'app_key', 'company_id',
-        'requester_name', 'requester_email', 'closed_at', 'due_at',
+        'company_name', 'requester_name', 'requester_email', 'closed_at', 'due_at',
         'last_replied_at', 'created_at', 'updated_at', 'comments', 'attachments',
     ]);
 });

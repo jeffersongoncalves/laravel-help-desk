@@ -113,12 +113,16 @@ trait HydratesModels
                 'name' => $payload['uploader_name'] ?? null,
                 'email' => $payload['uploader_email'] ?? null,
             ], fn ($value) => filled($value)),
+            'company' => array_filter([
+                'name' => $payload['company_name'] ?? null,
+            ], fn ($value) => filled($value)),
         ], fn ($snapshot) => $snapshot !== []);
 
         unset(
             $payload['requester_name'], $payload['requester_email'],
             $payload['author_name'], $payload['author_email'],
             $payload['uploader_name'], $payload['uploader_email'],
+            $payload['company_name'],
         );
 
         if ($metadata !== []) {

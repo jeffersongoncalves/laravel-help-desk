@@ -932,10 +932,18 @@ $ticket = HelpDesk::createTicket([
     'description' => 'I get an error when trying to log in...',
     'department_id' => $department->id,
     'company_id' => $user->company_id,
+    'company_name' => $user->company?->name,   // optional label
 ], $user);
+
+$ticket->company_name;  // 'Acme Inc.', falling back to the id
 ```
 
-Tickets created without it (including inbound email, unless you set it in a listener) keep
+`company_name` is not a column: like the requester's name it is copied into the ticket's
+metadata on creation, so a panel can show a label rather than a bare id, and a later rename
+does not rewrite it. Tickets created without one — including every ticket from before
+`1.13` — show the `company_id` instead.
+
+Tickets created without a `company_id` (including inbound email, unless you set it in a listener) keep
 `company_id = null`.
 
 The column on the ticket is always `company_id`, but your user model may name it anything.
@@ -987,8 +995,9 @@ not `null`, and require the user to be the requester otherwise.
 
 ### API
 
-`TicketResource` exposes `company_id`, but the API's caller scoping is unchanged: a
-requester still sees only the tickets they opened, not every ticket of their company.
+`POST tickets` accepts `company_id` and `company_name`, and `TicketResource` returns both,
+but the API's caller scoping is unchanged: a requester still sees only the tickets they
+opened, not every ticket of their company.
 
 ### Filament
 

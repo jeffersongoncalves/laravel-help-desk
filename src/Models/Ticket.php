@@ -41,6 +41,7 @@ use JeffersonGoncalves\HelpDesk\Enums\TicketStatus;
  * @property string $source
  * @property string|null $app_key
  * @property string|null $company_id
+ * @property-read string|null $company_name
  * @property-read string|null $app_name
  * @property string|null $email_message_id
  * @property Carbon|null $closed_at
@@ -323,6 +324,19 @@ class Ticket extends Model
             $name = data_get($this->metadata, 'app.name');
 
             return filled($name) ? (string) $name : $this->app_key;
+        });
+    }
+
+    /**
+     * The company's label as given when the ticket was created, falling back
+     * to its id — tickets created before the label was stored have only that.
+     */
+    protected function companyName(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            $name = data_get($this->metadata, 'company.name');
+
+            return filled($name) ? (string) $name : $this->company_id;
         });
     }
 

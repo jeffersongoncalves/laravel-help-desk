@@ -18,6 +18,10 @@ class StoreTicketRequest extends SignedApiRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'priority' => ['nullable', Rule::enum(TicketPriority::class)],
+            // Asserted by the satellite, like the actor it belongs to. It never
+            // widens what the API returns: reads stay scoped to the requester.
+            'company_id' => ['nullable', 'string', 'max:64'],
+            'company_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -35,6 +39,8 @@ class StoreTicketRequest extends SignedApiRequest
             'title' => $this->validated()['title'],
             'description' => $this->validated()['description'],
             'priority' => $this->validated()['priority'] ?? null,
+            'company_id' => $this->validated()['company_id'] ?? null,
+            'company_name' => $this->validated()['company_name'] ?? null,
             'source' => 'api',
         ], fn ($value) => $value !== null);
     }
