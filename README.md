@@ -938,6 +938,26 @@ $ticket = HelpDesk::createTicket([
 Tickets created without it (including inbound email, unless you set it in a listener) keep
 `company_id = null`.
 
+The column on the ticket is always `company_id`, but your user model may name it anything.
+When `users` has, say, an `empresa_id` instead, map it with an accessor so
+`$user->company_id` works everywhere — including filament-help-desk, which reads that
+attribute:
+
+```php
+class User extends Authenticatable
+{
+    use HasTickets;
+
+    // Only when `users` has no `company_id` column of its own — a real column wins
+    public function getCompanyIdAttribute(): ?string
+    {
+        return $this->empresa_id !== null ? (string) $this->empresa_id : null;
+    }
+}
+```
+
+Cast to string: `forCompany()` takes `?string` and the ticket column is a string.
+
 ### Querying
 
 ```php
@@ -952,6 +972,19 @@ Ticket::forCompany(null)->get();
 `forCompany()` is an ordinary scope — nothing applies it for you. Scope your own queries,
 policies and panels with it.
 
+Mind a user without a company: `forCompany($user->company_id)` with a `null` id matches
+every company-less ticket, including other requesters' ones. Fall back to the requester
+check in that case:
+
+```php
+$tickets = $user->company_id === null
+    ? $user->helpDeskTickets()->open()->get()
+    : Ticket::forCompany($user->company_id)->open()->get();
+```
+
+The same applies to policies: allow access by company only when the user's `company_id` is
+not `null`, and require the user to be the requester otherwise.
+
 ### API
 
 `TicketResource` exposes `company_id`, but the API's caller scoping is unchanged: a
@@ -960,7 +993,10 @@ requester still sees only the tickets they opened, not every ticket of their com
 ### Filament
 
 [filament-help-desk](https://github.com/jeffersongoncalves/filament-help-desk) scopes its
-User panel by company automatically — see its
+User panel by company automatically, and copies the requester's `company_id` onto new
+tickets. That applies only on the `database` driver, to users with a `company_id`: a user
+without one sees only their own tickets, and a satellite running `HELPDESK_DRIVER=api`
+lists only the requester's own tickets. See its
 [Multi-company portals](https://github.com/jeffersongoncalves/filament-help-desk#6-multi-company-portals)
 section ([jeffersongoncalves/filament-help-desk#125](https://github.com/jeffersongoncalves/filament-help-desk/pull/125)).
 
