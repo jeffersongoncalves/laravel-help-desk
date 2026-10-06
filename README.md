@@ -938,6 +938,26 @@ $ticket = HelpDesk::createTicket([
 Tickets created without it (including inbound email, unless you set it in a listener) keep
 `company_id = null`.
 
+The column on the ticket is always `company_id`, but your user model may name it anything.
+When `users` has, say, an `empresa_id` instead, map it with an accessor so
+`$user->company_id` works everywhere — including filament-help-desk, which reads that
+attribute:
+
+```php
+class User extends Authenticatable
+{
+    use HasTickets;
+
+    // Only when `users` has no `company_id` column of its own — a real column wins
+    public function getCompanyIdAttribute(): ?string
+    {
+        return $this->empresa_id !== null ? (string) $this->empresa_id : null;
+    }
+}
+```
+
+Cast to string: `forCompany()` takes `?string` and the ticket column is a string.
+
 ### Querying
 
 ```php
