@@ -788,11 +788,7 @@ $operator->helpDeskDepartments;      // departments they operate, with a `role` 
 $operator->helpDeskHistory;          // every action they performed
 ```
 
-`company_id` is a plain nullable column: the package has no notion of what a "company" is,
-it just carries whatever value you pass in when creating the ticket (e.g.
-`$user->company_id`) and lets you filter by it with `forCompany()`. Useful for a single
-installation that serves several companies through one set of users/departments, where each
-company's users should see every ticket raised by their own company, not just their own.
+For `forCompany()`, see [Multi-company Installations](#multi-company-installations).
 
 ### Ticket History
 
@@ -900,6 +896,73 @@ $sub = Category::create([
     'slug' => 'refunds',
 ]);
 ```
+
+## Multi-company Installations
+
+One installation can serve several companies through one set of users and departments,
+where each company's users should see every ticket raised by their own company, not just
+their own. Tickets carry an optional `company_id` for this (since `1.12`).
+
+### Upgrading
+
+```bash
+composer require jeffersongoncalves/laravel-help-desk:^1.12
+php artisan vendor:publish --tag=help-desk-migrations
+php artisan migrate
+```
+
+This publishes and runs `add_company_id_to_help_desk_tickets_table`, which adds a nullable,
+indexed `company_id` column to `help_desk_tickets`. Fresh installs get it with the other
+migrations.
+
+### What `company_id` is
+
+A free-form nullable string (up to 64 characters). The package has no notion of what a "company" is — no model,
+no relation, no validation. It stores whatever you pass and lets you filter by it.
+
+### Setting it
+
+The package never sets `company_id` on its own, so pass it whenever you create a ticket:
+
+```php
+use JeffersonGoncalves\HelpDesk\Facades\HelpDesk;
+
+$ticket = HelpDesk::createTicket([
+    'title' => 'Cannot access my account',
+    'description' => 'I get an error when trying to log in...',
+    'department_id' => $department->id,
+    'company_id' => $user->company_id,
+], $user);
+```
+
+Tickets created without it (including inbound email, unless you set it in a listener) keep
+`company_id = null`.
+
+### Querying
+
+```php
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+
+Ticket::forCompany($user->company_id)->open()->get();
+
+// null matches tickets with no company
+Ticket::forCompany(null)->get();
+```
+
+`forCompany()` is an ordinary scope — nothing applies it for you. Scope your own queries,
+policies and panels with it.
+
+### API
+
+`TicketResource` exposes `company_id`, but the API's caller scoping is unchanged: a
+requester still sees only the tickets they opened, not every ticket of their company.
+
+### Filament
+
+[filament-help-desk](https://github.com/jeffersongoncalves/filament-help-desk) scopes its
+User panel by company automatically — see its
+[Multi-company portals](https://github.com/jeffersongoncalves/filament-help-desk#6-multi-company-portals)
+section ([jeffersongoncalves/filament-help-desk#125](https://github.com/jeffersongoncalves/filament-help-desk/pull/125)).
 
 ## Exceptions
 
