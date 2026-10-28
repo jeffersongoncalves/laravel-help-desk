@@ -5,42 +5,13 @@ namespace JeffersonGoncalves\HelpDesk\Tests;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use JeffersonGoncalves\HelpDesk\HelpDeskServiceProvider;
+use JeffersonGoncalves\PestPluginDatabaseMigrations\LoadsPackageMigrations;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    use LoadsPackageMigrations;
     use RefreshDatabase;
-
-    /**
-     * Same order as HelpDeskServiceProvider::hasMigrations(). SQLite doesn't
-     * enforce foreign keys at CREATE TABLE time, but MySQL/Postgres do, so
-     * migrations must run in dependency order, not alphabetically by stub name.
-     */
-    private const MIGRATION_ORDER = [
-        'create_help_desk_departments_table',
-        'create_help_desk_categories_table',
-        'create_help_desk_tickets_table',
-        'create_help_desk_ticket_comments_table',
-        'create_help_desk_ticket_attachments_table',
-        'create_help_desk_ticket_history_table',
-        'create_help_desk_department_operator_table',
-        'create_help_desk_ticket_watchers_table',
-        'create_help_desk_canned_responses_table',
-        'create_help_desk_email_channels_table',
-        'create_help_desk_inbound_emails_table',
-        'add_app_key_to_help_desk_tickets_table',
-        'add_company_id_to_help_desk_tickets_table',
-        'add_metadata_to_help_desk_ticket_watchers_table',
-        'create_help_desk_ticket_feedback_table',
-        'create_help_desk_sla_policies_table',
-        'add_sla_to_help_desk_tickets_table',
-        'add_sla_pause_to_help_desk_tickets_table',
-        'add_sla_breach_tracking_to_help_desk_tickets_table',
-        'create_help_desk_automation_rules_table',
-        'create_help_desk_ticket_automations_applied_table',
-        'create_help_desk_kb_articles_table',
-        'change_settings_to_text_in_help_desk_email_channels_table',
-    ];
 
     protected function setUp(): void
     {
@@ -116,25 +87,6 @@ abstract class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
-
-        $stubsPath = __DIR__.'/../database/migrations';
-        $tempPath = sys_get_temp_dir().'/laravel-help-desk-migrations';
-
-        // Stale files from a previous run of this suite on another branch
-        // (different MIGRATION_ORDER, so a table ends up numbered
-        // differently) would otherwise sit here and get loaded too --
-        // loadMigrationsFrom() picks up every *.php file in the directory,
-        // not just the ones this run wrote.
-        if (is_dir($tempPath)) {
-            array_map('unlink', glob($tempPath.'/*.php') ?: []);
-        } else {
-            mkdir($tempPath, 0755, true);
-        }
-
-        foreach (self::MIGRATION_ORDER as $index => $name) {
-            copy($stubsPath.'/'.$name.'.php.stub', $tempPath.'/'.sprintf('%03d_%s.php', $index, $name));
-        }
-
-        $this->loadMigrationsFrom($tempPath);
+        $this->loadPackageMigrations(HelpDeskServiceProvider::class);
     }
 }
