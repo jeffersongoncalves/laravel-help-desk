@@ -40,7 +40,7 @@ class NotifyOperatorsOfTicketActivity implements ShouldQueue
 
         $except = [$ticket->user_type.':'.$ticket->user_id];
 
-        if ($comment !== null) {
+        if ($comment !== null && config('help-desk.notifications.notify_on.comment_added', true)) {
             // Watchers were already sent the comment by SendCommentAddedNotification.
             $ticket->loadMissing('watchers');
             $except = array_merge($except, $ticket->watchers
@@ -61,20 +61,22 @@ class NotifyOperatorsOfTicketActivity implements ShouldQueue
      */
     protected function recipients(Ticket $ticket, array $except): array
     {
-        $department = $ticket->department;
+        // Queried rather than read from the relation property: a soft-deleted
+        // department comes back null, and the property is typed as never null.
+        $department = $ticket->department()->first();
 
         if ($ticket->isAssigned()) {
             $assignee = $ticket->resolvedAssignedTo();
 
             if ($assignee === null
                 || in_array($assignee->getMorphClass().':'.$assignee->getKey(), $except, true)
-                || $department->operatorOptedOutOfEmail($assignee)) {
+                || ($department !== null && $department->operatorOptedOutOfEmail($assignee))) {
                 return [];
             }
 
             return [$assignee];
         }
 
-        return $department->operatorsToNotify($except);
+        return $department?->operatorsToNotify($except) ?? [];
     }
 }

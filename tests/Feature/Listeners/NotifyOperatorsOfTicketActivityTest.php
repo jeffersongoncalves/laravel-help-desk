@@ -105,6 +105,32 @@ it('ignores operator, internal and watcher-covered comments', function () {
     Notification::assertNotSentTo($this->bob, OperatorTicketActivityNotification::class);
 });
 
+it('still emails a watching assignee when comment notifications are off', function () {
+    config()->set('help-desk.notifications.notify_on.comment_added', false);
+    $this->ticket->update(['assigned_to_type' => $this->alice->getMorphClass(), 'assigned_to_id' => $this->alice->id]);
+    TicketWatcher::create([
+        'ticket_id' => $this->ticket->id,
+        'watcher_type' => $this->alice->getMorphClass(),
+        'watcher_id' => $this->alice->id,
+    ]);
+
+    (new NotifyOperatorsOfTicketActivity)->handle(new CommentAdded($this->ticket, commentBy($this->ticket, $this->requester)));
+
+    Notification::assertSentTo($this->alice, OperatorTicketActivityNotification::class);
+});
+
+it('survives a soft-deleted department', function () {
+    $this->department->delete();
+    $ticket = $this->ticket->fresh();
+
+    (new NotifyOperatorsOfTicketActivity)->handle(new TicketCreated($ticket));
+    Notification::assertNothingSent();
+
+    $ticket->update(['assigned_to_type' => $this->alice->getMorphClass(), 'assigned_to_id' => $this->alice->id]);
+    (new NotifyOperatorsOfTicketActivity)->handle(new TicketCreated($ticket));
+    Notification::assertSentTo($this->alice, OperatorTicketActivityNotification::class);
+});
+
 it('can be turned off in config', function () {
     config()->set('help-desk.notifications.notify_on.operator_new_ticket', false);
 
