@@ -45,6 +45,24 @@ return [
         'action' => 'View Ticket',
     ],
 
+    'operator_new_ticket' => [
+        'subject' => 'New Ticket :reference: :title',
+        'greeting' => 'Hello!',
+        'body' => ':requester opened a new support ticket.',
+        'title' => 'Title: :title',
+        'priority' => 'Priority: :priority',
+        'action' => 'View Ticket',
+    ],
+
+    'operator_requester_reply' => [
+        'subject' => 'New Reply on Ticket :reference',
+        'greeting' => 'Hello!',
+        'body' => ':requester replied to a support ticket.',
+        'title' => 'Title: :title',
+        'priority' => 'Priority: :priority',
+        'action' => 'View Ticket',
+    ],
+
     'automation_triggered' => [
         'subject' => 'Automation Triggered on Ticket :reference',
         'greeting' => 'Hello!',

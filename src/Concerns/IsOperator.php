@@ -33,7 +33,7 @@ trait IsOperator
             'help_desk_department_operator',
             null,
             'department_id'
-        )->withPivot('role')->withTimestamps();
+        )->withPivot('role', 'email_notifications')->withTimestamps();
     }
 
     /** @return MorphMany<TicketHistory, $this> */

@@ -31,6 +31,7 @@ uses(TestCase::class)
         config()->set('help-desk.app.key', null);
         config()->set('help-desk.app.name', null);
         config()->set('help-desk.scope_to_app', false);
+        config()->set('help-desk.notifications.notify_on.operator_new_ticket', true);
     })
     ->in('Feature');
 
