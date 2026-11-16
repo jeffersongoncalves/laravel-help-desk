@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use JeffersonGoncalves\HelpDesk\Concerns\HasSlug;
@@ -76,6 +77,60 @@ class Department extends Model
     public function emailChannels(): HasMany
     {
         return $this->hasMany(EmailChannel::class, 'department_id');
+    }
+
+    /**
+     * The department's operators who have not turned off email notifications
+     * for it, loaded from their own models.
+     *
+     * Read from the pivot table on the help desk connection, then each morph
+     * type is loaded separately on its own model's connection — a join would
+     * break when the two live in different databases. Operator types this
+     * application does not have are skipped, as with watchers.
+     *
+     * @param  list<string>  $exceptKeys  "type:id" pairs to leave out.
+     * @return list<Model>
+     */
+    public function operatorsToNotify(array $exceptKeys = []): array
+    {
+        $rows = $this->getConnection()
+            ->table('help_desk_department_operator')
+            ->where('department_id', $this->getKey())
+            ->where('email_notifications', true)
+            ->get(['operator_type', 'operator_id']);
+
+        $operators = [];
+
+        foreach ($rows->groupBy('operator_type') as $type => $group) {
+            if (! Ticket::morphIsResolvable($type)) {
+                continue;
+            }
+
+            /** @var class-string<Model> $class */
+            $class = Relation::getMorphedModel($type) ?? $type;
+
+            foreach ($class::query()->whereKey($group->pluck('operator_id')->all())->get() as $operator) {
+                if (! in_array($operator->getMorphClass().':'.$operator->getKey(), $exceptKeys, true)) {
+                    $operators[] = $operator;
+                }
+            }
+        }
+
+        return $operators;
+    }
+
+    /**
+     * Whether the operator turned off email notifications for this department.
+     */
+    public function operatorOptedOutOfEmail(Model $operator): bool
+    {
+        return $this->getConnection()
+            ->table('help_desk_department_operator')
+            ->where('department_id', $this->getKey())
+            ->where('operator_type', $operator->getMorphClass())
+            ->where('operator_id', $operator->getKey())
+            ->where('email_notifications', false)
+            ->exists();
     }
 
     /** @param Builder<static> $query */

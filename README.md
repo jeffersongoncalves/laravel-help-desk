@@ -1106,6 +1106,21 @@ If you want to handle events yourself:
 
 Notifications are sent automatically when events occur (configurable via `notifications.notify_on`). Email threading is supported via `Message-ID`, `In-Reply-To`, and `References` headers.
 
+| Event | Recipients |
+|-------|------------|
+| Ticket created | Requester; and the assigned operator, or every operator of the department |
+| Requester replies | Assigned operator, or every operator of the department (watchers get the comment notification instead) |
+| Operator replies | Requester and watchers |
+| Ticket assigned | The assigned operator |
+| Status changed | Requester (a close sends the closed notification instead) |
+| Ticket closed | Requester |
+
+Each operator can turn the operator emails off per department through the `email_notifications` column on `help_desk_department_operator`:
+
+```php
+$operator->helpDeskDepartments()->updateExistingPivot($departmentId, ['email_notifications' => false]);
+```
+
 ### Inbound Email
 
 The package supports receiving emails via 5 drivers:

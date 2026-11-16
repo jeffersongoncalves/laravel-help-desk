@@ -252,6 +252,12 @@ return [
             'ticket_status_changed' => true,
             'comment_added' => true,
             'ticket_closed' => true,
+
+            // Operators: the assigned one, or else every operator of the
+            // department who has not turned email off for it (the
+            // email_notifications column on help_desk_department_operator).
+            'operator_new_ticket' => true,
+            'operator_requester_reply' => true,
         ],
 
         'queue' => env('HELPDESK_NOTIFICATION_QUEUE', 'default'),

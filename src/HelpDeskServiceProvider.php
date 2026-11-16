@@ -19,6 +19,7 @@ use JeffersonGoncalves\HelpDesk\Contracts\TicketRepository;
 use JeffersonGoncalves\HelpDesk\Events\CommentAdded;
 use JeffersonGoncalves\HelpDesk\Events\InboundEmailReceived;
 use JeffersonGoncalves\HelpDesk\Events\TicketAssigned;
+use JeffersonGoncalves\HelpDesk\Events\TicketClosed;
 use JeffersonGoncalves\HelpDesk\Events\TicketCreated;
 use JeffersonGoncalves\HelpDesk\Events\TicketFeedbackSubmitted;
 use JeffersonGoncalves\HelpDesk\Events\TicketStatusChanged;
@@ -26,10 +27,12 @@ use JeffersonGoncalves\HelpDesk\Exceptions\UnsupportedDriverException;
 use JeffersonGoncalves\HelpDesk\Listeners\ApplySlaPolicy;
 use JeffersonGoncalves\HelpDesk\Listeners\AutoReopenOnLowFeedbackRating;
 use JeffersonGoncalves\HelpDesk\Listeners\LogTicketHistory;
+use JeffersonGoncalves\HelpDesk\Listeners\NotifyOperatorsOfTicketActivity;
 use JeffersonGoncalves\HelpDesk\Listeners\ProcessInboundEmail;
 use JeffersonGoncalves\HelpDesk\Listeners\RecordFirstResponse;
 use JeffersonGoncalves\HelpDesk\Listeners\SendCommentAddedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketAssignedNotification;
+use JeffersonGoncalves\HelpDesk\Listeners\SendTicketClosedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketCreatedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\SendTicketStatusChangedNotification;
 use JeffersonGoncalves\HelpDesk\Listeners\TrackSlaPause;
@@ -76,6 +79,7 @@ class HelpDeskServiceProvider extends PackageServiceProvider
                 'create_help_desk_ticket_automations_applied_table',
                 'create_help_desk_kb_articles_table',
                 'change_settings_to_text_in_help_desk_email_channels_table',
+                'add_email_notifications_to_help_desk_department_operator_table',
             ])
             ->hasTranslations()
             ->hasRoute('webhooks')
@@ -201,6 +205,9 @@ class HelpDeskServiceProvider extends PackageServiceProvider
         Event::listen(TicketStatusChanged::class, SendTicketStatusChangedNotification::class);
         Event::listen(CommentAdded::class, SendCommentAddedNotification::class);
         Event::listen(TicketAssigned::class, SendTicketAssignedNotification::class);
+        Event::listen(TicketClosed::class, SendTicketClosedNotification::class);
+        Event::listen(TicketCreated::class, NotifyOperatorsOfTicketActivity::class);
+        Event::listen(CommentAdded::class, NotifyOperatorsOfTicketActivity::class);
 
         // Inbound email processing
         Event::listen(InboundEmailReceived::class, ProcessInboundEmail::class);

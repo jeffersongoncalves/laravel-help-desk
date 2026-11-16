@@ -45,6 +45,24 @@ return [
         'action' => 'Ver Chamado',
     ],
 
+    'operator_new_ticket' => [
+        'subject' => 'Novo Chamado :reference: :title',
+        'greeting' => 'Olá!',
+        'body' => ':requester abriu um novo chamado de suporte.',
+        'title' => 'Título: :title',
+        'priority' => 'Prioridade: :priority',
+        'action' => 'Ver Chamado',
+    ],
+
+    'operator_requester_reply' => [
+        'subject' => 'Nova Resposta no Chamado :reference',
+        'greeting' => 'Olá!',
+        'body' => ':requester respondeu a um chamado de suporte.',
+        'title' => 'Título: :title',
+        'priority' => 'Prioridade: :priority',
+        'action' => 'Ver Chamado',
+    ],
+
     'automation_triggered' => [
         'subject' => 'Automação Disparada no Chamado :reference',
         'greeting' => 'Olá!',
