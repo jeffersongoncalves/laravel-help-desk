@@ -37,7 +37,7 @@ class TicketAssignedNotification extends Notification implements ShouldQueue
             ->line(__('help-desk::notifications.ticket_assigned.priority', [
                 'priority' => $this->ticket->priority->label(),
             ]))
-            ->action(__('help-desk::notifications.ticket_assigned.action'), url('/'));
+            ->action(__('help-desk::notifications.ticket_assigned.action'), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $this->addThreadingHeaders($message);

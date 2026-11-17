@@ -46,7 +46,7 @@ class OperatorTicketActivityNotification extends Notification implements ShouldQ
             ->line(__("help-desk::notifications.{$key}.priority", [
                 'priority' => $this->ticket->priority->label(),
             ]))
-            ->action(__("help-desk::notifications.{$key}.action"), url('/'));
+            ->action(__("help-desk::notifications.{$key}.action"), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $this->addThreadingHeaders($message);

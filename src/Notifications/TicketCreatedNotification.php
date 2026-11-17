@@ -40,7 +40,7 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
             ->line(__('help-desk::notifications.ticket_created.priority', [
                 'priority' => $this->ticket->priority->label(),
             ]))
-            ->action(__('help-desk::notifications.ticket_created.action'), url('/'));
+            ->action(__('help-desk::notifications.ticket_created.action'), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $messageId = $this->generateMessageId();

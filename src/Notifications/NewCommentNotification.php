@@ -39,7 +39,7 @@ class NewCommentNotification extends Notification implements ShouldQueue
             ->line(__('help-desk::notifications.comment_added.author', [
                 'author' => $authorName,
             ]))
-            ->action(__('help-desk::notifications.comment_added.action'), url('/'));
+            ->action(__('help-desk::notifications.comment_added.action'), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $this->addThreadingHeaders($message);

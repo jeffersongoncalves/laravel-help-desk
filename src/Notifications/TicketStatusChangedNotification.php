@@ -40,7 +40,7 @@ class TicketStatusChangedNotification extends Notification implements ShouldQueu
             ->line(__('help-desk::notifications.ticket_status_changed.to', [
                 'to' => $this->newStatus->label(),
             ]))
-            ->action(__('help-desk::notifications.ticket_status_changed.action'), url('/'));
+            ->action(__('help-desk::notifications.ticket_status_changed.action'), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $this->addThreadingHeaders($message);
