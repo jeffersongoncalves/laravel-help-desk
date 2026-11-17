@@ -34,7 +34,7 @@ class TicketAutomationTriggeredNotification extends Notification implements Shou
             ->line(__('help-desk::notifications.automation_triggered.title', [
                 'title' => $this->ticket->title,
             ]))
-            ->action(__('help-desk::notifications.automation_triggered.action'), url('/'));
+            ->action(__('help-desk::notifications.automation_triggered.action'), $this->ticket->notificationUrl($notifiable));
     }
 
     public function toArray(object $notifiable): array

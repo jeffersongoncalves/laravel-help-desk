@@ -2,6 +2,7 @@
 
 namespace JeffersonGoncalves\HelpDesk\Models;
 
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -84,6 +86,9 @@ class Ticket extends Model
     public const SORTABLE = ['created_at', 'last_replied_at', 'priority', 'status'];
 
     protected $table = 'help_desk_tickets';
+
+    /** @var (Closure(Ticket, object, bool): string)|null */
+    protected static ?Closure $notificationUrlResolver = null;
 
     /**
      * Matches the column's DB-level default so a freshly-built instance
@@ -250,6 +255,47 @@ class Ticket extends Model
         if ($this->requester_email !== null) {
             NotificationFacade::route('mail', $this->requester_email)->notify($notification);
         }
+    }
+
+    /**
+     * Build the action link of every help desk notification. The resolver
+     * gets the ticket, the notifiable and whether the notifiable is an
+     * operator (anyone other than the requester), so requesters and operators
+     * can land on different panels. Register it in a service provider's boot().
+     *
+     * @param  (Closure(Ticket, object, bool): string)|null  $resolver
+     */
+    public static function resolveNotificationUrlUsing(?Closure $resolver): void
+    {
+        static::$notificationUrlResolver = $resolver;
+    }
+
+    /**
+     * The link a notification about this ticket should point the notifiable
+     * to, or the app home when no resolver is registered.
+     */
+    public function notificationUrl(object $notifiable): string
+    {
+        if (static::$notificationUrlResolver === null) {
+            return url('/');
+        }
+
+        return (static::$notificationUrlResolver)($this, $notifiable, ! $this->isRequester($notifiable));
+    }
+
+    /**
+     * Whether the notifiable is this ticket's requester. An on-demand mail
+     * notifiable only ever reaches the requester (see notifyRequester()).
+     */
+    public function isRequester(object $notifiable): bool
+    {
+        if ($notifiable instanceof AnonymousNotifiable) {
+            return true;
+        }
+
+        return $notifiable instanceof Model
+            && $notifiable->getMorphClass() === $this->user_type
+            && (string) $notifiable->getKey() === (string) $this->user_id;
     }
 
     public function assignedTo(): MorphTo

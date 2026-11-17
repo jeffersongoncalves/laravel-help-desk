@@ -34,7 +34,7 @@ class TicketClosedNotification extends Notification implements ShouldQueue
             ->line(__('help-desk::notifications.ticket_closed.title', [
                 'title' => $this->ticket->title,
             ]))
-            ->action(__('help-desk::notifications.ticket_closed.action'), url('/'));
+            ->action(__('help-desk::notifications.ticket_closed.action'), $this->ticket->notificationUrl($notifiable));
 
         if (config('help-desk.email.threading_enabled', true)) {
             $this->addThreadingHeaders($message);

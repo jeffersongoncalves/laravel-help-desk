@@ -1121,6 +1121,16 @@ Each operator can turn the operator emails off per department through the `email
 $operator->helpDeskDepartments()->updateExistingPivot($departmentId, ['email_notifications' => false]);
 ```
 
+Every notification's button links to the app home until you tell it where tickets live. Register a resolver in a service provider's `boot()`. `$forOperator` is true for anyone other than the requester:
+
+```php
+use JeffersonGoncalves\HelpDesk\Models\Ticket;
+
+Ticket::resolveNotificationUrlUsing(fn (Ticket $ticket, object $notifiable, bool $forOperator) => $forOperator
+    ? route('admin.tickets.show', $ticket->uuid)
+    : route('tickets.show', $ticket->uuid));
+```
+
 ### Inbound Email
 
 The package supports receiving emails via 5 drivers:
