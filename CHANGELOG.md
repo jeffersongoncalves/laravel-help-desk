@@ -10,6 +10,13 @@ Entries are appended automatically on release. For versions up to and including
 released before this file existed, see the
 [releases page](https://github.com/jeffersongoncalves/laravel-help-desk/releases).
 
+## v1.15.0 - 2026-11-16
+
+Notification buttons can now link to the ticket instead of the app home (#93).
+
+- New `Ticket::resolveNotificationUrlUsing(fn (Ticket $ticket, object $notifiable, bool $forOperator) => ...)`, registered in a service provider's `boot()`. `$forOperator` is false only for the ticket's requester, so requesters and operators can land on their own panels.
+- All 7 notifications use it. Without a resolver the link stays `url('/')`, so nothing changes until you register one.
+
 ## v1.14.0 - 2026-11-16
 
 Operators are now emailed when a ticket arrives or the requester replies (#90), and each operator can opt out per department (#91).
@@ -102,6 +109,7 @@ CannedResponseService::resolveVariable('order_number', function (Ticket $ticket,
 
 
 
+
 ```
 A custom resolver can never override a core placeholder, and a missing value renders as an empty string rather than `null` or an exception — a template with a variable nobody filled in still renders the rest of the message.
 
@@ -113,6 +121,7 @@ A custom resolver can never override a core placeholder, and a missing value ren
 if ($ticket->canReceiveFeedback()) {
     $feedback->submit($ticket, rating: 5, comment: '...', submittedBy: $user);
 }
+
 
 
 
@@ -133,6 +142,7 @@ Feedback is accepted on a `resolved` or `closed` ticket, inside a configurable w
 'business_hours' => ['is_24_7' => true],
 // or a weekly window in UTC:
 'business_hours' => ['mon' => ['09:00', '18:00'], 'tue' => ['09:00', '18:00'], ...],
+
 
 
 
@@ -165,6 +175,7 @@ AutomationRule::create([
 
 
 
+
 ```
 `AutomationService::evaluate()` builds every query from an explicit field/operator allow-list — a rule's JSON never reaches raw SQL — and applies actions exclusively through `TicketService`, so `change_status` is validated by the same transition table as everywhere else. `notify` sends `TicketAutomationTriggeredNotification` to `assigned_to`, `requester`, or every `department_operators`; no resolvable target is a no-op, not an exception.
 
@@ -177,6 +188,7 @@ A `help_desk_ticket_automations_applied` guard table stops a rule from reprocess
 ```php
 $articles = $knowledgeBase->search('reset password', departmentId: 3);
 $knowledgeBase->recordView($articles->first());
+
 
 
 
@@ -198,6 +210,7 @@ Deflection tracking needs no new table: `TicketService::create()` already merges
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
 php artisan migrate
+
 
 
 
@@ -229,6 +242,7 @@ $tickets = HelpDesk::tickets()->forActor($user,
     search: 'scanner',                             // title and reference number
     sort: 'priority', direction: 'desc',           // one of Ticket::SORTABLE
 );
+
 
 
 
@@ -276,6 +290,7 @@ $ticket->comments->first()->attachments; // its own, from the same response
 
 
 
+
 ```
 The rule that made the trait worth having still holds: a response that did not carry attachments leaves the relation unset, so reading it throws something legible rather than returning a trustworthy-looking empty collection.
 
@@ -283,6 +298,7 @@ The rule that made the trait worth having still holds: a response that did not c
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
@@ -318,6 +334,7 @@ HelpDesk::reopenTicket($ticket, $user);
 
 
 
+
 ```
 `POST /help-desk/api/tickets/{uuid}/status` takes an allow-list of exactly two values. `resolved`, `in_progress`, `pending` and `on_hold` carry operator and SLA meaning and stay unreachable from a satellite — and the allow-list is enforced by the central application, not only by the client, because a satellite is not a trust boundary.
 
@@ -329,6 +346,7 @@ Everything else still throws:
 HelpDesk::changeStatus($ticket, TicketStatus::Resolved, $user);
 // HelpDeskApiException: Changing a ticket to resolved is an operator action and
 // the API driver cannot perform it.
+
 
 
 
@@ -362,6 +380,7 @@ HelpDesk::attachments()->contents($attachment, $ticket->uuid);
 
 
 
+
 ```
 `forActor()` takes the user rather than falling back to whoever is authenticated. Which tickets someone may see is not a decision to make by omission.
 
@@ -379,6 +398,7 @@ Undocumented and unconsumed in v1.7.0, so nothing in the wild hit it — but it 
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
@@ -423,6 +443,7 @@ HELPDESK_API_SECRET=a-long-random-string
 
 
 
+
 ```
 Calling code does not change. The facade is the same and what comes back is still a `Ticket`, with its accessors, enum casts and `is*()` helpers intact.
 
@@ -432,6 +453,7 @@ $ticket = HelpDesk::createTicket([...], $user);
 $ticket->reference_number;  // 'HD-00042'
 $ticket->isOpen();          // true
 $ticket->requester_name;    // 'Ada Lovelace'
+
 
 
 
@@ -452,6 +474,7 @@ So a leaked secret can impersonate any user *of that application*, and none of a
 ```
 canonical = METHOD \n REQUEST_URI \n TIMESTAMP \n NONCE \n sha256(RAW_BODY)
 signature = "sha256=" + hex(hmac_sha256(canonical, secret))
+
 
 
 
@@ -501,6 +524,7 @@ composer update jeffersongoncalves/laravel-help-desk
 
 
 
+
 ```
 No migration. No configuration change unless you want the new transport.
 
@@ -520,6 +544,7 @@ Worse than incomplete: it told an agent to read the polymorphic relations direct
 $ticket->user        // fatal, not null, when applications share a database
 $comment->author
 $attachment->uploadedBy
+
 
 
 
@@ -586,6 +611,7 @@ $row->resolvedWatcher();
 
 
 
+
 ```
 That makes five models with the same contract: prefer the live model, fall back to the copy, and never instantiate a class this application does not have.
 
@@ -613,6 +639,7 @@ Every snippet has a test behind it, so a rename that breaks the documentation fa
 composer update jeffersongoncalves/laravel-help-desk
 php artisan vendor:publish --tag=help-desk-migrations
 php artisan migrate
+
 
 
 
@@ -657,6 +684,7 @@ $attachment->resolvedUploadedBy(); // the model, or null when not installed here
 
 
 
+
 ```
 `AttachmentService` writes the snapshot on both creation paths. The `metadata` column already existed, so no migration.
 
@@ -672,6 +700,7 @@ Stamping it in the model's `creating` hook is not an option: the model holds onl
 
 ```bash
 composer update jeffersongoncalves/laravel-help-desk
+
 
 
 
