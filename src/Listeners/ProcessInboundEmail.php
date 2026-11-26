@@ -68,7 +68,7 @@ class ProcessInboundEmail implements ShouldQueue
 
         if ($ticket) {
             // Add comment to existing ticket
-            $body = $inboundEmail->text_body ?? strip_tags($inboundEmail->html_body ?? '');
+            $body = $this->bodyAsHtml($inboundEmail);
 
             if (empty(trim($body))) {
                 $inboundEmail->markIgnored();
@@ -84,10 +84,10 @@ class ProcessInboundEmail implements ShouldQueue
         } else {
             // Create new ticket
             $subject = $inboundEmail->subject ?: 'No Subject';
-            $body = $inboundEmail->text_body ?? strip_tags($inboundEmail->html_body ?? '');
+            $body = $this->bodyAsHtml($inboundEmail);
 
             if (empty(trim($body))) {
-                $body = $subject;
+                $body = e($subject);
             }
 
             $ticket = $this->ticketService->create([
@@ -102,6 +102,19 @@ class ProcessInboundEmail implements ShouldQueue
         }
 
         event(new InboundEmailProcessed($inboundEmail));
+    }
+
+    /**
+     * An email body is untrusted input that ends up rendered as HTML. Reduce it
+     * to plain text, escape it and keep its line breaks, so nothing the sender
+     * wrote is ever stored as markup.
+     */
+    protected function bodyAsHtml(InboundEmail $inboundEmail): string
+    {
+        $text = $inboundEmail->text_body
+            ?? html_entity_decode(strip_tags($inboundEmail->html_body ?? ''), ENT_QUOTES | ENT_HTML5);
+
+        return nl2br(e(trim($text)), false);
     }
 
     protected function resolveUser(string $email): ?Model

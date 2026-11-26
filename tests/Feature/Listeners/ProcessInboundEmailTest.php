@@ -62,6 +62,49 @@ it('adds a reply to an existing ticket matched via in-reply-to', function () {
         ->and($email->fresh()->status)->toBe('processed');
 });
 
+it('stores an email body as escaped text, never as markup', function (array $body, string $expected) {
+    $ticket = app(TicketService::class)->create([
+        'title' => 'Original ticket',
+        'description' => 'Original body',
+        'department_id' => $this->department->id,
+        'email_message_id' => '<original@example.com>',
+    ], $this->user);
+
+    $email = InboundEmail::factory()->create([
+        'from_address' => 'sender@example.com',
+        'in_reply_to' => '<original@example.com>',
+        'subject' => 'Re: Original ticket',
+        'text_body' => null,
+        'html_body' => null,
+        ...$body,
+    ]);
+
+    processEmail($email);
+
+    expect($ticket->fresh()->comments->first()->body)->toBe($expected);
+})->with([
+    'plain text' => [
+        ['text_body' => "a < b\n<script>alert(1)</script><img src=x onerror=alert(2)>"],
+        'a &lt; b<br>'."\n".'&lt;script&gt;alert(1)&lt;/script&gt;&lt;img src=x onerror=alert(2)&gt;',
+    ],
+    'html only' => [
+        ['html_body' => '<p>Hi &lt;script&gt;alert(1)&lt;/script&gt;</p><script>alert(2)</script>'],
+        'Hi &lt;script&gt;alert(1)&lt;/script&gt;alert(2)',
+    ],
+]);
+
+it('escapes the email body of a new ticket', function () {
+    $email = InboundEmail::factory()->create([
+        'from_address' => 'sender@example.com',
+        'subject' => 'I need help',
+        'text_body' => '<img src=x onerror=alert(1)>',
+    ]);
+
+    processEmail($email);
+
+    expect(Ticket::first()->description)->toBe('&lt;img src=x onerror=alert(1)&gt;');
+});
+
 it('marks the email as failed when no user matches the sender', function () {
     $email = InboundEmail::factory()->create([
         'from_address' => 'unknown@example.com',
